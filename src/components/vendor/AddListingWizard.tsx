@@ -4,6 +4,7 @@ import { useState } from "react";
 import { php } from "@/lib/utils";
 import { play } from "@/lib/audio";
 import { SubmitButton } from "@/components/shared/SubmitButton";
+import { ImageUpload } from "@/components/shared/ImageUpload";
 
 /**
  * Add Listing — the CANONICAL 4-step wizard.
@@ -24,14 +25,26 @@ type Card = { id: string; name: string; set_name: string; card_number: string | 
 
 const STEPS = ["Card Information", "Condition & Price", "Photos & Description", "Preview"];
 
+/** Per MASTER_PROMPT §2.2 step 3. Slab/Label is only meaningful when graded,
+ *  but it stays in the grid rather than appearing and disappearing as the
+ *  Graded toggle flips — a photo grid that reflows mid-wizard loses uploads. */
+const PHOTO_SLOTS = ["Front", "Back", "Close-up", "Slab / Label"];
+
 export function AddListingWizard({
   action,
   cards,
   shopName,
+  shopId,
+  draftId,
 }: {
   action: (fd: FormData) => Promise<void>;
   cards: Card[];
   shopName: string;
+  shopId: string;
+  /** Groups this wizard session's uploads under one folder. Generated on the
+   *  server per page load — a client-side `crypto.randomUUID()` would be an
+   *  impure call during render, which React 19 lints as an error. */
+  draftId: string;
 }) {
   const [step, setStep] = useState(1);
   const [cardId, setCardId] = useState(cards[0]?.id ?? "");
@@ -171,16 +184,18 @@ export function AddListingWizard({
           {/* 3 — Photos & Description */}
           <div hidden={step !== 3}>
             <h2 className="text-h3 font-semibold">Photos &amp; Description</h2>
-            <p className="mt-2 rounded-md bg-attention-bg px-3 py-2 text-caption text-attention">
-              Photo upload isn&apos;t wired to Supabase Storage yet — listings publish
-              without images and fall back to the placeholder art used elsewhere.
+            <p className="mt-2 text-caption text-text-secondary">
+              Photos upload as you pick them. A listing can publish without them
+              and falls back to placeholder art, so a draft is never blocked.
             </p>
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {["Front", "Back", "Close-up", "Slab / Label"].map((slot) => (
-                <div key={slot} className="grid aspect-square place-items-center rounded-md border border-dashed border-border text-caption text-text-muted">
-                  {slot}
-                </div>
-              ))}
+            <div className="mt-3">
+              <ImageUpload
+                name="photos"
+                bucket="listing-photos"
+                prefix={`${shopId}/${draftId}`}
+                slots={PHOTO_SLOTS}
+                required={["Front", "Back"]}
+              />
             </div>
             <div className="mt-3 flex flex-col gap-1.5">
               <label htmlFor="description" className="text-body font-medium">Description</label>

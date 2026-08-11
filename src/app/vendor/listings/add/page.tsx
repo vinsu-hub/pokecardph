@@ -15,6 +15,24 @@ async function publishListing(formData: FormData) {
   const graded = String(formData.get("listingType")) === "graded";
   const status = String(formData.get("intent")) === "draft" ? "draft" : "active";
 
+  // `photos` arrives as JSON from <ImageUpload>. The files are already in
+  // Storage by this point — the browser uploaded them directly under the
+  // bucket's policies — so this only records where they landed. A malformed
+  // value must not cost the vendor the rest of the form, hence the fallback.
+  let photos: { slot: string; url: string }[] = [];
+  try {
+    const raw = String(formData.get("photos") || "[]");
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      photos = parsed.filter(
+        (p): p is { slot: string; url: string } =>
+          typeof p === "object" && p !== null && typeof (p as { url?: unknown }).url === "string",
+      );
+    }
+  } catch {
+    photos = [];
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("listings")
@@ -30,6 +48,7 @@ async function publishListing(formData: FormData) {
       compare_price: formData.get("comparePrice") ? Number(formData.get("comparePrice")) : null,
       quantity: Number(formData.get("quantity") || 1),
       description: String(formData.get("description") || "") || null,
+      photos,
       status,
       sale_type: "fixed",
       item_category: "card",
@@ -70,6 +89,8 @@ export default async function AddListingPage() {
         action={publishListing}
         cards={cards ?? []}
         shopName={user.shopName ?? "Your shop"}
+        shopId={user.shopId}
+        draftId={crypto.randomUUID()}
       />
     </VendorShell>
   );
