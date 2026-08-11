@@ -124,8 +124,15 @@ function Plane({
            has a visible edge as it tilts, which a plane-behind-a-plane
            wouldn't show from the side. This is what keeps a Flat Scan
            reading as an object instead of a photo pasted onto nothing —
-           per the pasted conversation's "beveled-edge card mesh" idea. */}
-        <mesh position={[0, 0, -0.03]}>
+           per the pasted conversation's "beveled-edge card mesh" idea.
+           Position is -0.035, not -0.03: at -0.03 with depth 0.06 the box's
+           front face lands at exactly z=0 — identical to the card plane
+           below, which is textbook z-fighting. Static camera hides it (the
+           depth-buffer tie resolves the same way every frame); rotating
+           exposes it, because the tie-break flips per-pixel as the angle
+           changes, which read as a white flicker only during movement. The
+           0.005 gap is enough that the two surfaces are never coplanar. */}
+        <mesh position={[0, 0, -0.035]}>
           <boxGeometry args={[2.5, 3.5, 0.06]} />
           <meshStandardMaterial color="#f2f2f0" roughness={0.7} metalness={0.05} />
         </mesh>
