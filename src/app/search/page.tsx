@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionUser, shellUser } from "@/lib/auth";
 import { AppShell } from "@/components/shared/AppShell";
 import { FilterSheet } from "@/components/shared/FilterSheet";
-import { ListingCardTile } from "@/components/buyer/ListingCardTile";
+import { ListingResults, ViewToggle } from "@/components/buyer/ListingResults";
 import { getCartCount } from "@/lib/cart";
 import { php } from "@/lib/utils";
 import { conditionLabel, type ListingCard } from "@/lib/supabase/types";
@@ -165,50 +165,14 @@ export default async function SearchPage({
                 </Link>
               ))}
             </div>
-            <div className="flex gap-1" role="group" aria-label="View mode">
-              {[["grid", "Grid"], ["list", "List"]].map(([v, label]) => (
-                <Link key={v} href={url({ view: v })} aria-pressed={view === v}
-                  className={`flex h-11 items-center rounded-md border px-3 text-caption font-medium ${
-                    view === v ? "border-primary bg-primary-subtle text-primary" : "border-border text-text-secondary"
-                  }`}>
-                  {label}
-                </Link>
-              ))}
-            </div>
+            <ViewToggle view={view} url={(v) => url({ view: v })} />
           </div>
 
-          {rows.length === 0 ? (
-            <p className="mt-6 rounded-lg border border-border bg-bg px-6 py-12 text-center text-body text-text-secondary">
-              Nothing matched{q ? ` “${q}”` : ""}. Try removing a filter.
-            </p>
-          ) : view === "grid" ? (
-            <ul className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-              {rows.map((l) => (
-                <li key={l.id}><ListingCardTile listing={l} /></li>
-              ))}
-            </ul>
-          ) : (
-            <ul className="mt-4 flex flex-col gap-3">
-              {rows.map((l) => (
-                <li key={l.id}>
-                  <Link href={`/card/${l.id}`}
-                    className="flex items-center gap-3 rounded-lg border border-border bg-bg p-3 transition-colors duration-(--duration-instant) hover:bg-bg-muted">
-                    <span className="relative size-16 shrink-0 overflow-hidden rounded-md bg-bg-muted">
-                      <Art name={l.cards.name} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-body font-medium">{l.cards.name}</span>
-                      <span className="block truncate text-caption text-text-secondary">
-                        {l.cards.set_name} · {conditionLabel(l)}
-                      </span>
-                      <span className="block truncate text-caption text-text-secondary">{l.shops.name}</span>
-                    </span>
-                    <span className="shrink-0 text-body font-bold tabular">{php(Number(l.price))}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ListingResults
+            listings={rows}
+            view={view}
+            empty={`Nothing matched${q ? ` “${q}”` : ""}. Try removing a filter.`}
+          />
         </div>
       </div>
     </AppShell>
@@ -251,11 +215,3 @@ function FacetGroup({
   );
 }
 
-function Art({ name }: { name: string }) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
-  return (
-    <span className="absolute inset-0"
-      style={{ background: `linear-gradient(150deg, hsl(${h} 70% 88%), hsl(${(h + 40) % 360} 65% 78%))` }} />
-  );
-}

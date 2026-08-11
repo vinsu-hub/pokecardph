@@ -24,7 +24,15 @@ type Row = {
   orders: { id: string; status: string; created_at: string; buyer_id: string } | null;
 };
 
-export default async function VendorDashboardPage() {
+export default async function VendorDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const sp = await searchParams;
+  const range: RangeKey = (["7d", "30d", "3m", "1y"] as const).includes(sp.range as RangeKey)
+    ? (sp.range as RangeKey)
+    : "30d";
   const user = await getSessionUser();
   if (!user) redirect("/login?next=/vendor/dashboard");
   if (!user.shopId) redirect("/vendor/onboarding");
@@ -39,16 +47,20 @@ export default async function VendorDashboardPage() {
         .select("quantity, price_at_purchase, listings(cards(name)), orders(status, created_at, buyer_id, id)")
         .eq("shop_id", shopId),
       supabase.from("listings").select("id, status, created_at").eq("shop_id", shopId),
-      supabase.from("trades").select("id, status, created_at").eq("shop_id", shopId),
+      supabase
+        .from("trades")
+        .select("id, status, created_at, value_difference, profiles!trades_proposer_id_fkey(display_name)")
+        .eq("shop_id", shopId)
+        .order("created_at", { ascending: false }),
       supabase.from("shops").select("*").eq("id", shopId).maybeSingle(),
     ]);
 
   const rows = (items ?? []) as unknown as Row[];
 
-  const m = computeMetrics(rows, listings ?? [], trades ?? []);
+  const m = computeMetrics(rows, listings ?? [], trades ?? [], range);
   const {
     totalSales, change, activeListings, newThisWeek, pendingOrders,
-    openTrades, recent, top, series, last30Total,
+    openTrades, recent, top, series, rangeTotal,
   } = m;
 
   // Shop Health: a simple composite of "has listings" and "rated well".
@@ -75,7 +87,7 @@ export default async function VendorDashboardPage() {
       {/* Stats */}
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Total Sales" value={php(totalSales)}
-          note={change == null ? "no prior period" : `${change >= 0 ? "↑" : "↓"} ${Math.abs(change)}% vs last 30 days`}
+          note={change == null ? "no prior period" : `${change >= 0 ? "↑" : "↓"} ${Math.abs(change)}% vs previous ${RANGES[range].label.toLowerCase()}`}
           tone={change != null && change >= 0 ? "success" : undefined} />
         <Stat label="Active Listings" value={String(activeListings)}
           note={`${newThisWeek} new this week`} tone="success" />
@@ -149,11 +161,34 @@ export default async function VendorDashboardPage() {
 
           {/* Sales overview */}
           <section className="rounded-lg border border-border bg-bg p-(--card-pad)">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-h2 font-semibold">Sales Overview</h2>
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-h2 font-bold tabular">{php(last30Total)}</p>
-                <p className="text-caption text-text-secondary">last 30 days</p>
+                <h2 className="text-h2 font-semibold">Sales Overview</h2>
+                <p className="mt-1 text-h2 font-bold tabular">{php(rangeTotal)}</p>
+                <p className="text-caption text-text-secondary">
+                  {RANGES[range].label.toLowerCase()}
+                  {change != null && (
+                    <span className={change >= 0 ? "text-success" : "text-danger"}>
+                      {" "}{change >= 0 ? "↑" : "↓"} {Math.abs(change)}%
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-1" role="group" aria-label="Date range">
+                {(Object.keys(RANGES) as RangeKey[]).map((k) => (
+                  <Link
+                    key={k}
+                    href={`/vendor/dashboard?range=${k}`}
+                    aria-pressed={range === k}
+                    className={`flex h-11 items-center rounded-md px-3 text-caption font-medium ${
+                      range === k
+                        ? "bg-primary text-white"
+                        : "border border-border text-text-secondary hover:bg-bg-muted"
+                    }`}
+                  >
+                    {RANGES[k].label}
+                  </Link>
+                ))}
               </div>
             </div>
             <SalesChart data={series} />
@@ -172,6 +207,42 @@ export default async function VendorDashboardPage() {
                 ? "Publish a listing to raise your score."
                 : "Keep it up! Your shop is performing well."}
             </p>
+          </section>
+
+          <section className="rounded-lg border border-border bg-bg p-(--card-pad)">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-h3 font-semibold">Recent Trade Requests</h2>
+              <Link href="/vendor/trade-requests" className="text-caption text-primary">
+                View all
+              </Link>
+            </div>
+            {(trades ?? []).length === 0 ? (
+              <p className="mt-2 text-body text-text-secondary">No trade requests yet.</p>
+            ) : (
+              <ul className="mt-3 flex flex-col gap-3">
+                {(trades ?? []).slice(0, 3).map((t) => {
+                  const who = (t as unknown as { profiles: { display_name: string | null } | null })
+                    .profiles?.display_name ?? "A collector";
+                  return (
+                    <li key={t.id}>
+                      <Link href={`/trade/${t.id}`} className="flex items-start justify-between gap-2">
+                        <span className="min-w-0">
+                          <span className="block truncate text-body font-medium">{who}</span>
+                          <span className="block truncate text-caption text-text-secondary">
+                            wants to trade for your card
+                          </span>
+                        </span>
+                        {t.status === "proposed" && (
+                          <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-caption font-medium text-white">
+                            New
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </section>
 
           <section className="rounded-lg border border-border bg-bg p-(--card-pad)">
@@ -208,9 +279,20 @@ type TradeRow = { id: string; status: string; created_at: string };
  * Not just tidiness: React's purity rule rightly refuses `Date.now()` inside a
  * render body, and every figure here is relative to "now".
  */
-function computeMetrics(rows: Row[], listings: ListingRow[], trades: TradeRow[]) {
+export const RANGES = {
+  "7d": { days: 7, label: "7 Days", points: 7 },
+  "30d": { days: 30, label: "30 Days", points: 30 },
+  "3m": { days: 90, label: "3 Months", points: 30 },
+  "1y": { days: 365, label: "1 Year", points: 24 },
+} as const;
+export type RangeKey = keyof typeof RANGES;
+
+function computeMetrics(
+  rows: Row[], listings: ListingRow[], trades: TradeRow[], range: RangeKey,
+) {
   const now = Date.now();
   const dayMs = 86_400_000;
+  const { days, points } = RANGES[range];
   const paid = rows.filter(
     (r) => r.orders && r.orders.status !== "cancelled" && r.orders.status !== "pending",
   );
@@ -221,10 +303,10 @@ function computeMetrics(rows: Row[], listings: ListingRow[], trades: TradeRow[])
     const t = new Date(iso).getTime();
     return t >= now - from * dayMs && t < now - to * dayMs;
   };
-  const last30 = paid.filter((r) => r.orders && inWindow(r.orders.created_at, 30, 0));
-  const prev30 = paid.filter((r) => r.orders && inWindow(r.orders.created_at, 60, 30));
+  const current = paid.filter((r) => r.orders && inWindow(r.orders.created_at, days, 0));
+  const previous = paid.filter((r) => r.orders && inWindow(r.orders.created_at, days * 2, days));
   const change =
-    sum(prev30) === 0 ? null : Math.round(((sum(last30) - sum(prev30)) / sum(prev30)) * 100);
+    sum(previous) === 0 ? null : Math.round(((sum(current) - sum(previous)) / sum(previous)) * 100);
 
   const byOrder = new Map<string, { id: string; status: string; created_at: string; item: string; amount: number }>();
   for (const r of rows) {
@@ -250,7 +332,7 @@ function computeMetrics(rows: Row[], listings: ListingRow[], trades: TradeRow[])
 
   return {
     totalSales: sum(paid),
-    last30Total: sum(last30),
+    rangeTotal: sum(current),
     change,
     activeListings: listings.filter((l) => l.status === "active").length,
     newThisWeek: listings.filter((l) => new Date(l.created_at).getTime() > now - 7 * dayMs).length,
@@ -264,13 +346,21 @@ function computeMetrics(rows: Row[], listings: ListingRow[], trades: TradeRow[])
       .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
       .slice(0, 5),
     top: [...units.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3),
-    series: Array.from({ length: 30 }, (_, i) => {
-      const d = new Date(now - (29 - i) * dayMs);
-      const key = d.toISOString().slice(0, 10);
+    // Bucket width scales with the range so 1Y renders 24 readable buckets
+    // rather than 365 unreadable ones.
+    series: Array.from({ length: points }, (_, i) => {
+      const bucketDays = days / points;
+      const end = now - (points - 1 - i) * bucketDays * dayMs;
+      const start = end - bucketDays * dayMs;
+      const d = new Date(end);
       return {
-        date: d.toLocaleDateString("en-PH", { month: "short", day: "numeric" }),
+        date: d.toLocaleDateString("en-PH",
+          days > 120 ? { month: "short", year: "2-digit" } : { month: "short", day: "numeric" }),
         total: paid
-          .filter((r) => r.orders?.created_at.slice(0, 10) === key)
+          .filter((r) => {
+            const t = r.orders ? new Date(r.orders.created_at).getTime() : 0;
+            return t > start && t <= end;
+          })
           .reduce((s, r) => s + Number(r.price_at_purchase) * r.quantity, 0),
       };
     }),

@@ -154,3 +154,105 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================================================
+   Shop storefront — 3D shelves
+   Reference: VENDOR STORE VIEW.png, where cards stand on rendered shelves
+   rather than sitting in a flat grid.
+
+   Layered as an enhancement: the markup is a working horizontal row on its
+   own, and the perspective is added only at >= 640px and only when motion is
+   allowed. Below that, or under prefers-reduced-motion, it degrades to the
+   flat row with no visual debt.
+   ========================================================================== */
+
+.shelf {
+  --shelf-depth: 34px;
+  --shelf-lip: 10px;
+}
+
+@media (width >= 640px) {
+  .shelf {
+    perspective: 1400px;
+    perspective-origin: 50% 120%;
+  }
+
+  /* The plane the cards stand on. Tilted away from the viewer, with a light
+     front edge so it reads as a solid board rather than a shadow. */
+  .shelf-plane {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: var(--shelf-depth);
+    transform: rotateX(62deg);
+    transform-origin: 50% 0;
+    background: linear-gradient(
+      180deg,
+      #ffffff 0%,
+      color-mix(in srgb, var(--color-border) 85%, white) 55%,
+      color-mix(in srgb, var(--color-border) 130%, white) 100%
+    );
+    border-top: 2px solid #ffffff;
+    border-radius: 0 0 3px 3px;
+    box-shadow: 0 6px 14px rgb(0 0 0 / 0.10);
+    pointer-events: none;
+  }
+
+  /* Cards sit slightly forward of the plane and lift on hover. */
+  .shelf-item {
+    transform: translateZ(var(--shelf-lip));
+  }
+}
+
+@media (width >= 640px) and (prefers-reduced-motion: no-preference) {
+  .shelf-item {
+    transition: transform var(--duration-fast) var(--ease-out-soft);
+  }
+  .shelf-item:hover {
+    transform: translateZ(calc(var(--shelf-lip) + 8px)) translateY(-2px);
+  }
+
+  /* Contact shadow — sells the card as resting ON the shelf. Sized to the
+     card so it reads as cast, not painted. */
+  .shelf-item::after {
+    content: "";
+    position: absolute;
+    inset: auto 8% -6px 8%;
+    height: 12px;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse at center,
+      rgb(0 0 0 / 0.18) 0%,
+      rgb(0 0 0 / 0) 70%
+    );
+    pointer-events: none;
+  }
+}
+
+/* ============================================================================
+   Storefront entrance — SHOP_STOREFRONT_ANIMATION.md
+   Top-to-bottom, outside-to-inside settle. Header, tabs, sidebar, then each
+   shelf row 60ms after the previous. Whole sequence completes under 700ms.
+   Uses the existing easing/duration tokens — no new vocabulary.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: no-preference) {
+  .enter {
+    animation: enter-up var(--duration-base) var(--ease-out-soft) backwards;
+  }
+  .enter-d1 { animation-delay: 40ms; }
+  .enter-d2 { animation-delay: 80ms; }
+  .enter-d3 { animation-delay: 140ms; }
+  .enter-d4 { animation-delay: 200ms; }
+  .enter-d5 { animation-delay: 260ms; }
+}
+
+@keyframes enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

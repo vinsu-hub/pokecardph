@@ -29,7 +29,7 @@ export default async function ShopPage({
   searchParams,
 }: {
   params: Promise<{ shopId: string }>;
-  searchParams: Promise<{ tab?: string; cat?: string }>;
+  searchParams: Promise<{ tab?: string; cat?: string; set?: string; rarity?: string }>;
 }) {
   const { shopId } = await params;
   const sp = await searchParams;
@@ -61,7 +61,18 @@ export default async function ShopPage({
     ["non_graded", "Non-Graded Cards", raw],
   ];
   const cat = sp.cat && categories.some(([k]) => k === sp.cat) ? sp.cat : "all";
-  const visible = categories.find(([k]) => k === cat)![2];
+
+  const facet = (src: ListingCard[], pick: (l: ListingCard) => string | null) => {
+    const m = new Map<string, number>();
+    for (const l of src) { const k = pick(l); if (k) m.set(k, (m.get(k) ?? 0) + 1); }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  };
+  const setFacets = facet(all, (l) => l.cards?.set_name ?? null);
+  const rarityFacets = facet(all, (l) => l.cards?.rarity ?? null);
+
+  let visible = categories.find(([k]) => k === cat)![2];
+  if (sp.set) visible = visible.filter((l) => l.cards?.set_name === sp.set);
+  if (sp.rarity) visible = visible.filter((l) => l.cards?.rarity === sp.rarity);
 
   // Featured = highest-value listings. Excluded from the shelves below so a
   // shop with one category doesn't render the same six cards twice.
@@ -80,7 +91,7 @@ export default async function ShopPage({
   return (
     <AppShell user={shellUser(user)} cartCount={cartCount}>
       {/* ---- Shop header ---- */}
-      <header className="rounded-lg border border-border bg-primary-subtle p-(--card-pad)">
+      <header className="enter rounded-lg border border-border bg-primary-subtle p-(--card-pad)">
         <div className="flex flex-wrap items-start gap-4">
           <span className="grid size-16 shrink-0 place-items-center rounded-full bg-primary text-h3 font-bold text-white">
             {shop.name.slice(0, 2).toUpperCase()}
@@ -131,7 +142,7 @@ export default async function ShopPage({
       </header>
 
       {/* ---- Tabs ---- */}
-      <nav className="mt-4 flex flex-wrap gap-1 border-b border-border">
+      <nav className="enter enter-d1 mt-4 flex flex-wrap gap-1 border-b border-border">
         {TABS.map((t) => (
           <Link
             key={t}
@@ -196,7 +207,7 @@ export default async function ShopPage({
       ) : (
         <div className="mt-6 flex flex-col gap-6 lg:flex-row">
           {/* ---- Shop categories sidebar ---- */}
-          <aside className="lg:w-[240px] lg:shrink-0">
+          <aside className="enter enter-d2 lg:w-[240px] lg:shrink-0">
             <section className="rounded-lg border border-border bg-bg p-4">
               <h2 className="text-h3 font-semibold">Shop Categories</h2>
               <ul className="mt-2 flex flex-col">
@@ -218,17 +229,24 @@ export default async function ShopPage({
                 ))}
               </ul>
             </section>
+
+            {/* Filter By — the reference's second sidebar block. */}
+            <section className="mt-4 rounded-lg border border-border bg-bg p-4">
+              <h2 className="text-h3 font-semibold">Filter By</h2>
+              <FacetList title="Set" items={setFacets} param="set" current={sp.set} shopId={shopId} sp={sp} />
+              <FacetList title="Rarity" items={rarityFacets} param="rarity" current={sp.rarity} shopId={shopId} sp={sp} />
+            </section>
           </aside>
 
           <div className="min-w-0 flex-1">
-            {cat === "all" ? (
+            {cat === "all" && !sp.set && !sp.rarity ? (
               <div className="flex flex-col gap-8">
-                <Shelf title="Featured Cards" listings={featured} shopId={shopId} />
+                <Shelf title="Featured Cards" listings={featured} shopId={shopId} delay="enter-d3" />
                 {shelfGraded.length > 0 && (
-                  <Shelf title="Graded Cards" listings={shelfGraded} shopId={shopId} cat="graded" />
+                  <Shelf title="Graded Cards" listings={shelfGraded} shopId={shopId} cat="graded" delay="enter-d4" />
                 )}
                 {shelfRaw.length > 0 && (
-                  <Shelf title="Non-Graded Cards" listings={shelfRaw} shopId={shopId} cat="non_graded" />
+                  <Shelf title="Non-Graded Cards" listings={shelfRaw} shopId={shopId} cat="non_graded" delay="enter-d5" />
                 )}
               </div>
             ) : (
@@ -254,13 +272,56 @@ export default async function ShopPage({
  * A shelf row. Scrolls horizontally inside its own container — the page body
  * itself never scrolls sideways, which is the hard rule.
  */
-function Shelf({
-  title, listings, shopId, cat,
+function FacetList({
+  title, items, param, current, shopId, sp,
 }: {
-  title: string; listings: ListingCard[]; shopId: string; cat?: string;
+  title: string;
+  items: [string, number][];
+  param: string;
+  current?: string;
+  shopId: string;
+  sp: Record<string, string | undefined>;
+}) {
+  if (items.length === 0) return null;
+  const href = (value?: string) => {
+    const q = new URLSearchParams();
+    for (const [k, v] of Object.entries({ ...sp, [param]: value })) if (v) q.set(k, String(v));
+    const s = q.toString();
+    return `/shops/${shopId}${s ? `?${s}` : ""}`;
+  };
+  return (
+    <div className="mt-3">
+      <h3 className="text-caption font-medium text-text-secondary">{title}</h3>
+      <ul className="mt-1 flex flex-col">
+        {items.slice(0, 5).map(([value, count]) => {
+          const on = current === value;
+          return (
+            <li key={value}>
+              <Link
+                href={href(on ? undefined : value)}
+                aria-pressed={on}
+                className={`flex h-11 items-center justify-between gap-2 rounded-md px-2 text-body ${
+                  on ? "bg-primary-subtle font-medium text-primary" : "hover:bg-bg-muted"
+                }`}
+              >
+                <span className="min-w-0 truncate">{value}</span>
+                <span className="shrink-0 text-caption text-text-secondary tabular">{count}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function Shelf({
+  title, listings, shopId, cat, delay,
+}: {
+  title: string; listings: ListingCard[]; shopId: string; cat?: string; delay?: string;
 }) {
   return (
-    <section>
+    <section className={`enter ${delay ?? ""}`}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-h2 font-semibold">{title}</h2>
         {cat && (
@@ -269,13 +330,20 @@ function Shelf({
           </Link>
         )}
       </div>
-      <ul className="mt-3 flex gap-4 overflow-x-auto pb-2">
-        {listings.map((l) => (
-          <li key={l.id} className="w-[160px] shrink-0 sm:w-[200px]">
-            <ListingCardTile listing={l} />
-          </li>
-        ))}
-      </ul>
+
+      {/* The row scrolls inside its own container — the page body never
+          scrolls sideways. The shelf plane sits behind the cards and is
+          purely decorative, so it's aria-hidden and pointer-events:none. */}
+      <div className="shelf relative mt-3">
+        <ul className="relative z-10 flex gap-4 overflow-x-auto pb-6">
+          {listings.map((l) => (
+            <li key={l.id} className="shelf-item relative w-[160px] shrink-0 sm:w-[200px]">
+              <ListingCardTile listing={l} />
+            </li>
+          ))}
+        </ul>
+        <span aria-hidden className="shelf-plane" />
+      </div>
     </section>
   );
 }

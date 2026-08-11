@@ -1,24 +1,40 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser, shellUser } from "@/lib/auth";
 import { AppShell } from "@/components/shared/AppShell";
 import { FilterSheet } from "@/components/shared/FilterSheet";
-import { ListingCardTile } from "@/components/buyer/ListingCardTile";
-import type { ListingCard } from "@/lib/supabase/types";
+import {
+  ListingResults,
+  ViewToggle,
+  FilterSelect,
+} from "@/components/buyer/ListingResults";
+import { getCartCount } from "@/lib/cart";
+import { conditionLabel, type ListingCard } from "@/lib/supabase/types";
 
 /**
  * Home / Browse.
  * Reference: REFERENCE IMAGES/SHOP PAGE.png — despite the filename, that image
  * is this screen, not the shop storefront.
  *
- * Horizontal filter bar (not the left sidebar used by Search results), result
- * count, card grid, pagination.
+ * Horizontal filter bar (Search results uses a left sidebar instead — the two
+ * reference screens are deliberately different), result count, card grid with
+ * a grid/list toggle, pagination.
  */
-
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 20;
 
-type Search = { page?: string; type?: string; sort?: string };
+type Search = {
+  page?: string; type?: string; sort?: string; view?: string;
+  set?: string; condition?: string; price?: string; seller?: string;
+};
+
+const PRICE_BANDS: Record<string, [number, number]> = {
+  "0-1000": [0, 1000],
+  "1000-2500": [1000, 2500],
+  "2500-5000": [2500, 5000],
+  "5000+": [5000, Number.MAX_SAFE_INTEGER],
+};
 
 export default async function HomePage({
   searchParams,
@@ -29,38 +45,91 @@ export default async function HomePage({
   const page = Math.max(1, Number(sp.page ?? 1));
   const type = sp.type ?? "all";
   const sort = sp.sort ?? "newest";
+  const view = sp.view === "list" ? "list" : "grid";
 
   const supabase = await createClient();
   const user = await getSessionUser();
+  const cartCount = await getCartCount();
 
-  let query = supabase
+  // One unfiltered fetch backs both the facet options and the results, so the
+  // dropdowns always offer values that actually exist in the catalogue.
+  const { data: allData, error } = await supabase
     .from("listings")
-    .select("*, cards(*), shops(*)", { count: "exact" })
+    .select("*, cards(*), shops(*)")
     .eq("status", "active")
-    // Fixed-price only. Auctions live on /auctions and carry a countdown and a
-    // current bid rather than a price — mixing them into this grid would show
-    // a starting bid as if it were a buy-now price.
     .eq("sale_type", "fixed");
 
-  if (type === "graded") query = query.eq("listing_type", "graded");
-  if (type === "non_graded") query = query.eq("listing_type", "non_graded");
+  let rows = (allData ?? []) as unknown as ListingCard[];
 
-  query =
-    sort === "price_asc"
-      ? query.order("price", { ascending: true })
-      : sort === "price_desc"
-        ? query.order("price", { ascending: false })
-        : query.order("created_at", { ascending: false });
+  const uniq = (pick: (l: ListingCard) => string | null): [string, string][] => {
+    const s = new Set<string>();
+    for (const l of rows) { const v = pick(l); if (v) s.add(v); }
+    return [...s].sort().map((v) => [v, v]);
+  };
+  const setOptions = uniq((l) => l.cards?.set_name ?? null);
+  const conditionOptions = uniq((l) => conditionLabel(l));
+  const sellerOptions = (() => {
+    const m = new Map<string, string>();
+    for (const l of rows) if (l.shops) m.set(l.shops.id, l.shops.name);
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  })();
 
-  const from = (page - 1) * PAGE_SIZE;
-  const { data, count, error } = await query.range(from, from + PAGE_SIZE - 1);
+  if (type === "graded") rows = rows.filter((l) => l.listing_type === "graded");
+  if (type === "non_graded") rows = rows.filter((l) => l.listing_type === "non_graded");
+  if (sp.set) rows = rows.filter((l) => l.cards?.set_name === sp.set);
+  if (sp.condition) rows = rows.filter((l) => conditionLabel(l) === sp.condition);
+  if (sp.seller) rows = rows.filter((l) => l.shop_id === sp.seller);
+  if (sp.price && PRICE_BANDS[sp.price]) {
+    const [lo, hi] = PRICE_BANDS[sp.price];
+    rows = rows.filter((l) => Number(l.price) >= lo && Number(l.price) < hi);
+  }
 
-  const listings = (data ?? []) as unknown as ListingCard[];
-  const total = count ?? 0;
+  rows =
+    sort === "price_asc" ? [...rows].sort((a, b) => Number(a.price) - Number(b.price))
+    : sort === "price_desc" ? [...rows].sort((a, b) => Number(b.price) - Number(a.price))
+    : [...rows].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+
+  const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  /** Preserve the other params when changing one. */
+  const url = (patch: Partial<Search>) => {
+    const next = new URLSearchParams();
+    for (const [k, v] of Object.entries({ ...sp, ...patch })) if (v) next.set(k, String(v));
+    return `/?${next.toString()}`;
+  };
+
+  const activeCount = [sp.set, sp.condition, sp.price, sp.seller].filter(Boolean).length
+    + (type === "all" ? 0 : 1);
+
+  const filterBar = (
+    <form action="/" className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="sort" value={sort} />
+      <input type="hidden" name="view" value={view} />
+      <TypeTabs active={type} />
+      <FilterSelect name="set" label="All Sets" value={sp.set} options={setOptions} />
+      <FilterSelect name="condition" label="All Conditions" value={sp.condition} options={conditionOptions} />
+      <FilterSelect name="price" label="All Prices" value={sp.price} options={[
+        ["0-1000", "Under ₱1,000"],
+        ["1000-2500", "₱1,000 – ₱2,500"],
+        ["2500-5000", "₱2,500 – ₱5,000"],
+        ["5000+", "₱5,000 and up"],
+      ]} />
+      <FilterSelect name="seller" label="All Sellers" value={sp.seller} options={sellerOptions} />
+      <button className="h-11 rounded-md bg-primary px-4 text-body font-medium text-white transition-transform duration-(--duration-instant) active:scale-[0.98]">
+        Apply
+      </button>
+      {activeCount > 0 && (
+        <Link href="/" className="flex h-11 items-center px-2 text-body text-text-secondary underline">
+          Clear all
+        </Link>
+      )}
+    </form>
+  );
 
   return (
-    <AppShell user={shellUser(user)}>
+    <AppShell user={shellUser(user)} cartCount={cartCount}>
       <div className="flex flex-col gap-6">
         <header>
           <h1 className="text-display font-bold">Pokémon Cards for Sale</h1>
@@ -69,29 +138,17 @@ export default async function HomePage({
           </p>
         </header>
 
-        {/* Filter bar — horizontal on this screen, per the reference. Collapses
-            into the shared FilterSheet below 1024px. */}
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-bg p-3">
-          <TypeTabs active={type} sort={sort} />
-          <div className="ml-auto flex items-center gap-2">
-            <SortLinks active={sort} type={type} />
-            <FilterSheet mobileOnly activeCount={type === "all" ? 0 : 1}>
+        {/* Desktop: the reference's horizontal filter bar.
+            Mobile: the same controls inside the shared bottom sheet. */}
+        <div className="rounded-lg border border-border bg-bg p-3">
+          <div className="hidden lg:block">{filterBar}</div>
+          <div className="flex items-center justify-between gap-2 lg:hidden">
+            <FilterSheet mobileOnly activeCount={activeCount}>
               <div className="rounded-lg border border-border bg-bg p-(--card-pad)">
-                <h3 className="text-h3 font-semibold">Card type</h3>
-                <ul className="mt-2 flex flex-col">
-                  {TYPES.map((t) => (
-                    <li key={t.value}>
-                      <a
-                        href={`/?type=${t.value}&sort=${sort}`}
-                        className="flex h-11 items-center text-body"
-                      >
-                        {t.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+                {filterBar}
               </div>
             </FilterSheet>
+            <ViewToggle view={view} url={(v) => url({ view: v })} />
           </div>
         </div>
 
@@ -101,33 +158,33 @@ export default async function HomePage({
           </p>
         ) : (
           <>
-            <p className="text-body text-text-secondary">
-              <span className="font-medium text-text-primary tabular">
-                {total.toLocaleString("en-PH")}
-              </span>{" "}
-              listing{total === 1 ? "" : "s"} found
-            </p>
-
-            {listings.length === 0 ? (
-              <p className="rounded-lg border border-border bg-bg px-6 py-12 text-center text-body text-text-secondary">
-                No listings match these filters yet.
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-body text-text-secondary">
+                <span className="font-medium text-text-primary tabular">
+                  {total.toLocaleString("en-PH")}
+                </span>{" "}
+                listing{total === 1 ? "" : "s"} found
               </p>
-            ) : (
-              <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-                {listings.map((l) => (
-                  <li key={l.id}>
-                    <ListingCardTile listing={l} />
-                  </li>
-                ))}
-              </ul>
-            )}
+              <div className="flex items-center gap-2">
+                <SortLinks active={sort} url={url} />
+                <span className="hidden lg:block">
+                  <ViewToggle view={view} url={(v) => url({ view: v })} />
+                </span>
+              </div>
+            </div>
+
+            <ListingResults
+              listings={pageRows}
+              view={view}
+              empty="No listings match these filters yet."
+            />
 
             {pages > 1 && (
-              <nav className="flex items-center justify-center gap-1 pt-2">
+              <nav className="flex items-center justify-center gap-1 pt-2" aria-label="Pagination">
                 {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
-                  <a
+                  <Link
                     key={p}
-                    href={`/?page=${p}&type=${type}&sort=${sort}`}
+                    href={url({ page: String(p) })}
                     aria-current={p === page ? "page" : undefined}
                     className={`grid h-11 min-w-11 place-items-center rounded-md px-3 text-body font-medium tabular ${
                       p === page
@@ -136,7 +193,7 @@ export default async function HomePage({
                     }`}
                   >
                     {p}
-                  </a>
+                  </Link>
                 ))}
               </nav>
             )}
@@ -153,21 +210,28 @@ const TYPES = [
   { value: "non_graded", label: "Non-Graded" },
 ];
 
-function TypeTabs({ active, sort }: { active: string; sort: string }) {
+/** Radio-backed so the tabs submit with the rest of the filter form. */
+function TypeTabs({ active }: { active: string }) {
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-1" role="group" aria-label="Card type">
       {TYPES.map((t) => (
-        <a
+        <label
           key={t.value}
-          href={`/?type=${t.value}&sort=${sort}`}
-          className={`flex h-11 items-center rounded-md px-4 text-body font-medium transition-colors duration-(--duration-instant) ${
+          className={`flex h-11 cursor-pointer items-center rounded-md px-4 text-body font-medium transition-colors duration-(--duration-instant) ${
             active === t.value
               ? "bg-primary-subtle text-primary"
               : "border border-border bg-bg text-text-secondary hover:bg-bg-muted"
           }`}
         >
+          <input
+            type="radio"
+            name="type"
+            value={t.value}
+            defaultChecked={active === t.value}
+            className="sr-only"
+          />
           {t.label}
-        </a>
+        </label>
       ))}
     </div>
   );
@@ -179,13 +243,18 @@ const SORTS = [
   { value: "price_desc", label: "Price ↓" },
 ];
 
-function SortLinks({ active, type }: { active: string; type: string }) {
+function SortLinks({
+  active, url,
+}: {
+  active: string;
+  url: (p: Partial<Search>) => string;
+}) {
   return (
     <div className="hidden gap-1 sm:flex">
       {SORTS.map((s) => (
-        <a
+        <Link
           key={s.value}
-          href={`/?type=${type}&sort=${s.value}`}
+          href={url({ sort: s.value })}
           className={`flex h-11 items-center rounded-md px-3 text-body transition-colors duration-(--duration-instant) ${
             active === s.value
               ? "bg-primary-subtle font-medium text-primary"
@@ -193,7 +262,7 @@ function SortLinks({ active, type }: { active: string; type: string }) {
           }`}
         >
           {s.label}
-        </a>
+        </Link>
       ))}
     </div>
   );

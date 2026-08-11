@@ -15,11 +15,26 @@ import { cn } from "@/lib/utils";
  * the same treatment AppShell gives Trade and Messages. Never a dead link.
  */
 
-type Item = { href: string; label: string; disabled?: boolean; note?: string };
+type Item = {
+  href: string;
+  label: string;
+  disabled?: boolean;
+  note?: string;
+  /** Rendered indented beneath the parent when the section is active. */
+  children?: { href: string; label: string }[];
+};
 
 const NAV: Item[] = [
   { href: "/vendor/dashboard", label: "Dashboard" },
-  { href: "/vendor/listings", label: "Listings" },
+  {
+    href: "/vendor/listings",
+    label: "Listings",
+    children: [
+      { href: "/vendor/listings", label: "All Listings" },
+      { href: "/vendor/listings/add", label: "Add New Listing" },
+      { href: "/vendor/listings?tab=draft", label: "Drafts" },
+    ],
+  },
   { href: "/vendor/orders", label: "Orders" },
   { href: "/vendor/trade-requests", label: "Trade Requests" },
   { href: "/vendor/auctions", label: "Auctions" },
@@ -83,6 +98,22 @@ export function VendorShell({
                     >
                       {item.label}
                     </Link>
+                  )}
+                  {/* Sub-items expand only for the active section, matching
+                      the reference's collapsed-by-default sidebar. */}
+                  {item.children && active && (
+                    <ul className="mt-1 hidden flex-col lg:flex">
+                      {item.children.map((c) => (
+                        <li key={c.href + c.label}>
+                          <Link
+                            href={c.href}
+                            className="flex h-11 items-center rounded-md pr-3 pl-6 text-body text-text-secondary hover:bg-bg-muted hover:text-text-primary"
+                          >
+                            {c.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </li>
               );
