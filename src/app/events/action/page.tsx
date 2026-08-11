@@ -57,8 +57,8 @@ export default async function ActionEventsPage({
 
   return (
     <AppShell user={shellUser(user)}>
-      <nav className="mb-4 text-caption text-text-secondary">
-        <Link href="/events" className="hover:text-text-primary">Events</Link>
+      <nav className="mb-4 flex items-center text-caption text-text-secondary">
+        <Link href="/events" className="inline-flex h-11 items-center px-2 hover:text-text-primary">Events</Link>
         <span className="mx-1.5">›</span>
         <span className="text-text-primary">Action Events</span>
       </nav>

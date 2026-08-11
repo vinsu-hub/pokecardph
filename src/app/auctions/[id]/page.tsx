@@ -75,10 +75,10 @@ export default async function AuctionDetailPage({
   return (
     <AppShell user={shellUser(user)}>
       {auction.is_action_event && (
-        <nav className="mb-4 text-caption text-text-secondary">
-          <Link href="/events" className="hover:text-text-primary">Events</Link>
+        <nav className="mb-4 flex items-center text-caption text-text-secondary">
+          <Link href="/events" className="inline-flex h-11 items-center px-2 hover:text-text-primary">Events</Link>
           <span className="mx-1.5">›</span>
-          <Link href="/events/action" className="hover:text-text-primary">Action Events</Link>
+          <Link href="/events/action" className="inline-flex h-11 items-center px-2 hover:text-text-primary">Action Events</Link>
           <span className="mx-1.5">›</span>
           <span className="text-text-primary">{auction.event_title ?? title}</span>
         </nav>
