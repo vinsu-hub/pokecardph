@@ -718,8 +718,13 @@ it.
   auth redirects working. Operational detail now lives in
   `CONTEXT/POKECARD_PH_DEPLOYMENT_RUNBOOK.md` — a document `SEED_DATA_PLAN.md` §4 referenced but that
   had never existed.
-  **Still open:** the deployed origin must be added to Supabase's redirect allowlist
-  (`https://pokecard-ph.vercel.app/**`) or production magic-link sign-in lands on the wrong host.
+  ~~Still open: the deployed origin must be added to Supabase's redirect allowlist~~ — **done
+  2026-08-12.** Verified past "no error thrown": confirmed GoTrue's `generate_link` response actually
+  embedded the production redirect rather than silently falling back to Site URL, then re-ran the
+  full buyer + vendor journey suite against `https://pokecard-ph.vercel.app` itself — 21/21, 0
+  console errors, real order created and tracked, vendor saw it and opened the slide-over. **Stage 1
+  is now fully closed**, all four gate criteria proved on the deployed URL, not assumed from
+  localhost.
 - ~~**Cron registration**~~ — **done 2026-08-12.** Vercel Hobby allows daily granularity only, so the
   five jobs split: the three billing jobs collapse into one daily `/api/cron/daily`, while the
   auction closer and event resolver run on **pg_cron inside Postgres**, calling
