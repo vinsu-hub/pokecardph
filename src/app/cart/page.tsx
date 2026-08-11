@@ -5,7 +5,7 @@ import {
   StickyActionBar,
   StickyActionBarSpacer,
 } from "@/components/shared/StickyActionBar";
-import { php, platformFee } from "@/lib/utils";
+import { php, platformFee, shippingFee, FREE_SHIPPING_THRESHOLD } from "@/lib/utils";
 import { conditionLabel } from "@/lib/supabase/types";
 import { getCartDetail } from "@/lib/cart";
 import { setQty, removeFromCart } from "@/lib/cart-actions";
@@ -22,8 +22,10 @@ export default async function CartPage() {
 
   const subtotal = detail.reduce((s, d) => s + Number(d.listing.price) * d.line.qty, 0);
   const fee = platformFee(subtotal);
-  const shipping = detail.length ? 120 : 0;
+  const qualifiesForFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
+  const shipping = detail.length ? shippingFee(subtotal) : 0;
   const total = subtotal + fee + shipping;
+  const amountToFreeShipping = FREE_SHIPPING_THRESHOLD - subtotal;
 
   return (
     <AppShell user={shellUser(user)} cartCount={detail.reduce((n, d) => n + d.line.qty, 0)}>
@@ -95,7 +97,10 @@ export default async function CartPage() {
               <h2 className="text-h3 font-semibold">Order Summary</h2>
               <dl className="mt-3 flex flex-col gap-2">
                 <Row label="Subtotal" value={php(subtotal)} />
-                <Row label="Shipping" value={php(shipping)} />
+                <Row
+                  label="Shipping"
+                  value={qualifiesForFreeShipping ? "Free" : php(shipping)}
+                />
                 <Row label="Platform fee" value={php(fee)} />
                 <div className="mt-1 flex items-center justify-between border-t border-border pt-3">
                   <dt className="text-body font-medium">Total</dt>
@@ -109,6 +114,37 @@ export default async function CartPage() {
                 Proceed to Checkout
               </Link>
             </div>
+
+            {/* Reference: REFERENCE IMAGES/BUYER CART.png. ₱10,000 is the
+                mockup's own number, not a sourced business rule — the
+                shipping calculation above honors the same constant, so this
+                is never a bar that promises something checkout doesn't do. */}
+            <div className="rounded-lg border border-border bg-bg p-4">
+              {qualifiesForFreeShipping ? (
+                <p className="flex items-center gap-2 text-caption font-medium text-success">
+                  <TruckIcon />
+                  You&apos;ve unlocked free shipping!
+                </p>
+              ) : (
+                <>
+                  <p className="flex items-center gap-2 text-caption text-text-secondary">
+                    <TruckIcon />
+                    You&apos;re{" "}
+                    <span className="font-medium text-text-primary">{php(amountToFreeShipping)}</span>{" "}
+                    away from free shipping
+                  </p>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{
+                        width: `${Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
             <p className="rounded-md bg-primary-subtle px-3 py-2 text-caption text-text-secondary">
               <span className="font-medium text-primary">Buyer Protection.</span> Covered for
               item-not-as-described with dispute support.
@@ -129,6 +165,17 @@ export default async function CartPage() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+function TruckIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="size-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M2 6h9v8H2z" strokeLinejoin="round" />
+      <path d="M11 9h4l3 3v2h-7z" strokeLinejoin="round" />
+      <circle cx="5.5" cy="15" r="1.5" />
+      <circle cx="14.5" cy="15" r="1.5" />
+    </svg>
   );
 }
 

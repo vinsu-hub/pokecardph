@@ -6,7 +6,7 @@ import { CheckoutForm } from "@/components/buyer/CheckoutForm";
 import { conditionLabel } from "@/lib/supabase/types";
 import { getCartDetail } from "@/lib/cart";
 import { clearCart } from "@/lib/cart-actions";
-import { platformFee } from "@/lib/utils";
+import { platformFee, shippingFee } from "@/lib/utils";
 
 /**
  * Checkout.
@@ -18,8 +18,6 @@ import { platformFee } from "@/lib/utils";
  */
 export const dynamic = "force-dynamic";
 
-const SHIPPING = 120;
-
 async function placeOrder(formData: FormData) {
   "use server";
   const user = await getSessionUser();
@@ -30,6 +28,7 @@ async function placeOrder(formData: FormData) {
 
   const subtotal = detail.reduce((s, d) => s + Number(d.listing.price) * d.line.qty, 0);
   const fee = platformFee(subtotal);
+  const shipping = shippingFee(subtotal);
 
   const supabase = await createClient();
   const { data: order, error } = await supabase
@@ -37,9 +36,9 @@ async function placeOrder(formData: FormData) {
     .insert({
       buyer_id: user.id,
       subtotal,
-      shipping_fee: SHIPPING,
+      shipping_fee: shipping,
       platform_fee: fee,
-      total: subtotal + fee + SHIPPING,
+      total: subtotal + fee + shipping,
       payment_method: String(formData.get("payment") ?? "gcash"),
       status: "pending",
       shipping_address: {
@@ -77,6 +76,7 @@ export default async function CheckoutPage() {
 
   const subtotal = detail.reduce((s, d) => s + Number(d.listing.price) * d.line.qty, 0);
   const fee = platformFee(subtotal);
+  const shipping = shippingFee(subtotal);
 
   return (
     <AppShell user={shellUser(user)} cartCount={detail.length}>
@@ -93,9 +93,9 @@ export default async function CheckoutPage() {
         }))}
         totals={{
           subtotal,
-          shipping: SHIPPING,
+          shipping,
           fee,
-          total: subtotal + fee + SHIPPING,
+          total: subtotal + fee + shipping,
         }}
       />
     </AppShell>

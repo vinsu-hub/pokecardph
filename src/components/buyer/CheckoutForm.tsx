@@ -155,7 +155,7 @@ export function CheckoutForm({
           <h2 className="text-h3 font-semibold">Summary</h2>
           <dl className="mt-3 flex flex-col gap-2">
             <Row label="Subtotal" value={php(totals.subtotal)} />
-            <Row label="Shipping" value={php(totals.shipping)} />
+            <Row label="Shipping" value={totals.shipping === 0 ? "Free" : php(totals.shipping)} />
             <Row label="Platform fee" value={php(totals.fee)} />
             <div className="flex items-center justify-between border-t border-border pt-3">
               <dt className="text-body font-medium">Total</dt>
