@@ -47,3 +47,6 @@ next-env.d.ts
 /logo/
 /supabase/.temp/
 /.dev/
+
+.vercel
+.env*
