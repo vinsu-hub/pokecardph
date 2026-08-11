@@ -69,7 +69,7 @@ export default async function ScanPage({
                   <span
                     className={cn(
                       "flex h-11 items-center gap-3 rounded-md px-2 text-body",
-                      active && "bg-primary-subtle font-medium text-primary",
+                      active && "bg-primary-subtle font-medium text-primary-on-subtle",
                       !active && !done && "text-text-muted",
                     )}
                   >

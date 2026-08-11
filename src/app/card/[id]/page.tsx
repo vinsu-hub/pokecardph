@@ -86,7 +86,7 @@ export default async function CardDetailPage({
           </div>
 
           <div className="relative mt-3 aspect-[4/3] overflow-hidden rounded-lg border border-border">
-            <span className="absolute top-3 left-3 z-10 rounded-md bg-primary px-2.5 py-1 text-caption font-medium text-white">
+            <span className="absolute top-3 left-3 z-10 rounded-md bg-grade-bg px-2.5 py-1 text-caption font-medium text-grade-text">
               {conditionLabel(listing)}
             </span>
             <CardArt name={card.name} />

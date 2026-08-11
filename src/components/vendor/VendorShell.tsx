@@ -94,7 +94,7 @@ export function VendorShell({
                       className={cn(
                         base,
                         active
-                          ? "bg-primary-subtle text-primary"
+                          ? "bg-primary-subtle text-primary-on-subtle"
                           : "text-text-secondary hover:bg-bg-muted hover:text-text-primary",
                       )}
                     >

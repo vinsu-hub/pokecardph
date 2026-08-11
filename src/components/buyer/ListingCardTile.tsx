@@ -25,7 +25,7 @@ export function ListingCardTile({ listing }: { listing: ListingCard }) {
       className="group flex flex-col overflow-hidden rounded-lg border border-border bg-bg shadow-rest transition-[transform,box-shadow] duration-(--duration-fast) ease-(--ease-out-soft) hover:-translate-y-0.5 hover:shadow-elevated"
     >
       <div className="relative aspect-[3/4] bg-bg-muted">
-        <span className="absolute top-2 left-2 z-10 rounded-md bg-primary px-2 py-0.5 text-caption font-medium text-white">
+        <span className="absolute top-2 left-2 z-10 rounded-md bg-grade-bg px-2 py-0.5 text-caption font-medium text-grade-text">
           {conditionLabel(listing)}
         </span>
         <CardArt name={card.name} />

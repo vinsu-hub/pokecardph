@@ -217,7 +217,7 @@ export default async function ShopPage({
                       href={`/shops/${shopId}?cat=${key}`}
                       aria-current={cat === key ? "true" : undefined}
                       className={`flex h-11 items-center justify-between gap-2 rounded-md px-2 text-body ${
-                        cat === key ? "bg-primary-subtle font-medium text-primary" : "hover:bg-bg-muted"
+                        cat === key ? "bg-primary-subtle font-medium text-primary-on-subtle" : "hover:bg-bg-muted"
                       }`}
                     >
                       <span className="truncate">{label}</span>
@@ -301,7 +301,7 @@ function FacetList({
                 href={href(on ? undefined : value)}
                 aria-pressed={on}
                 className={`flex h-11 items-center justify-between gap-2 rounded-md px-2 text-body ${
-                  on ? "bg-primary-subtle font-medium text-primary" : "hover:bg-bg-muted"
+                  on ? "bg-primary-subtle font-medium text-primary-on-subtle" : "hover:bg-bg-muted"
                 }`}
               >
                 <span className="min-w-0 truncate">{value}</span>

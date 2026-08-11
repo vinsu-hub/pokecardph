@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { Logo } from "@/components/shared/Logo";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -50,14 +50,9 @@ function LoginForm() {
   return (
     <main className="grid min-h-svh place-items-center bg-bg-muted px-4 py-10">
       <div className="w-full max-w-[400px]">
-        <Link href="/" className="mb-6 flex h-11 items-center justify-center gap-2">
-          <span className="grid size-8 place-items-center rounded-full bg-primary text-caption font-bold text-white">
-            PC
-          </span>
-          <span className="text-h3 font-bold tracking-tight">
-            PokeCard <span className="text-primary">PH</span>
-          </span>
-        </Link>
+        <div className="mb-6 flex justify-center">
+          <Logo />
+        </div>
 
         <div className="rounded-lg border border-border bg-bg p-(--card-pad) shadow-rest">
           <h1 className="text-h2 font-semibold">Welcome to PokeCard PH</h1>

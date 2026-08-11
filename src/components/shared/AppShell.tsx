@@ -17,6 +17,8 @@ import {
   Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Logo } from "./Logo";
+import { Footer } from "./Footer";
 
 /**
  * The buyer-facing app shell.
@@ -32,6 +34,9 @@ import { cn } from "@/lib/utils";
 type NavItem = {
   href: string;
   label: string;
+  /** Small solid-primary pill beside the label. Manual content, not dynamic —
+   *  remove it once the feature has been live a while. */
+  tag?: string;
   icon: React.ComponentType<{ className?: string }>;
   /** Phase-gated items render disabled with a tooltip rather than 404ing. */
   disabled?: boolean;
@@ -42,7 +47,7 @@ const NAV: NavItem[] = [
   { href: "/", label: "Home", icon: Home },
   { href: "/search", label: "Search", icon: Search },
   { href: "/trade", label: "Trade", icon: ArrowLeftRight },
-  { href: "/events", label: "Events", icon: Sparkles },
+  { href: "/events", label: "Events", icon: Sparkles, tag: "NEW" },
   { href: "/orders", label: "Orders", icon: Package },
 ];
 
@@ -89,14 +94,7 @@ export function AppShell({
             {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
 
-          <Link href="/" className="flex h-11 min-h-11 shrink-0 items-center gap-2 py-1">
-            <span className="grid size-8 place-items-center rounded-full bg-primary text-caption font-bold text-white">
-              PC
-            </span>
-            <span className="text-h3 font-bold tracking-tight">
-              PokeCard <span className="text-primary">PH</span>
-            </span>
-          </Link>
+          <Logo />
 
           {/* Desktop search */}
           <form action="/search" className="hidden flex-1 lg:block">
@@ -218,6 +216,8 @@ export function AppShell({
           })}
         </ul>
       </nav>
+
+      <Footer />
     </div>
   );
 }
@@ -243,12 +243,18 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       href={item.href}
       className={cn(
         base,
+        "gap-1.5",
         active
           ? "text-primary"
           : "text-text-secondary hover:bg-bg-muted hover:text-text-primary",
       )}
     >
       {item.label}
+      {item.tag && (
+        <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-white">
+          {item.tag}
+        </span>
+      )}
     </Link>
   );
 }

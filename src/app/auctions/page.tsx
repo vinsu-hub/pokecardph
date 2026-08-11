@@ -68,7 +68,7 @@ export default async function AuctionsPage({
               href={`/auctions?sort=${v}`}
               className={`flex h-11 items-center rounded-md px-4 text-body font-medium ${
                 sort === v
-                  ? "bg-primary-subtle text-primary"
+                  ? "bg-primary-subtle text-primary-on-subtle"
                   : "border border-border bg-bg text-text-secondary hover:bg-bg-muted"
               }`}
             >
@@ -99,7 +99,7 @@ export default async function AuctionsPage({
                     className="group flex flex-col overflow-hidden rounded-lg border border-border bg-bg shadow-rest transition-[transform,box-shadow] duration-(--duration-fast) ease-(--ease-out-soft) hover:-translate-y-0.5 hover:shadow-elevated"
                   >
                     <div className="relative aspect-[3/4] bg-bg-muted">
-                      <span className="absolute top-2 left-2 z-10 rounded-md bg-primary px-2 py-0.5 text-caption font-medium text-white">
+                      <span className="absolute top-2 left-2 z-10 rounded-md bg-grade-bg px-2 py-0.5 text-caption font-medium text-grade-text">
                         {CATEGORY[l?.item_category] ?? "Item"}
                       </span>
                       <Art name={title} />

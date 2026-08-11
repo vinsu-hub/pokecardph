@@ -10,9 +10,28 @@
 
 @theme {
   /* --- Brand ------------------------------------------------------------ */
-  --color-primary: #4f46e5;
-  --color-primary-hover: #4338ca;
-  --color-primary-subtle: #eef2ff;
+  /* Red / black / white, per POKECARD_PH_BRAND_ALIGNMENT.md, which supersedes
+     the design system's original indigo palette. Built around the Poke Ball
+     mark; the values still serve Trust / Trade / Passion. */
+  --color-primary: #e4002b;
+  --color-primary-hover: #c40025;
+  --color-primary-subtle: #fdecee;
+
+  /* Text on a primary-subtle background. #E4002B on #FDECEE measures 4.25:1,
+     just under AA, and that pairing carries every active tab, chip and
+     selected row. The hover value clears it at 5.46:1, so it doubles as the
+     on-subtle foreground rather than inventing a new colour. */
+  --color-primary-on-subtle: #c40025;
+
+  /* Near-black navy from the logo's dark half — NOT pure black. Wordmark,
+     footer ground, and any dark surface. */
+  --color-ink: #0b0f1a;
+
+  /* Grade and rarity badges. Deliberately neutral, not brand red: with red
+     now reserved for actions, a PSA 10 badge must not compete with Buy Now
+     for priority. This is the one place colour usage decreases. */
+  --color-grade-bg: #eef2f6;
+  --color-grade-text: #334155;
 
   /* --- Surfaces & text -------------------------------------------------- */
   --color-bg: #ffffff;

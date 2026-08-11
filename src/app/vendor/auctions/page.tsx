@@ -94,7 +94,7 @@ export default async function VendorAuctionsPage({
             href={`/vendor/auctions?tab=${v}`}
             className={`flex h-11 items-center rounded-md px-4 text-body font-medium ${
               tab === v
-                ? "bg-primary-subtle text-primary"
+                ? "bg-primary-subtle text-primary-on-subtle"
                 : "border border-border bg-bg text-text-secondary"
             }`}
           >

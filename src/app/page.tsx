@@ -219,7 +219,7 @@ function TypeTabs({ active }: { active: string }) {
           key={t.value}
           className={`flex h-11 cursor-pointer items-center rounded-md px-4 text-body font-medium transition-colors duration-(--duration-instant) ${
             active === t.value
-              ? "bg-primary-subtle text-primary"
+              ? "bg-primary-subtle text-primary-on-subtle"
               : "border border-border bg-bg text-text-secondary hover:bg-bg-muted"
           }`}
         >
@@ -257,7 +257,7 @@ function SortLinks({
           href={url({ sort: s.value })}
           className={`flex h-11 items-center rounded-md px-3 text-body transition-colors duration-(--duration-instant) ${
             active === s.value
-              ? "bg-primary-subtle font-medium text-primary"
+              ? "bg-primary-subtle font-medium text-primary-on-subtle"
               : "text-text-secondary hover:bg-bg-muted"
           }`}
         >

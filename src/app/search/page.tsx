@@ -159,7 +159,7 @@ export default async function SearchPage({
               {[["newest", "Newest"], ["price_asc", "Price ↑"], ["price_desc", "Price ↓"]].map(([v, label]) => (
                 <Link key={v} href={url({ sort: v })}
                   className={`flex h-11 items-center rounded-md px-3 text-body ${
-                    sort === v ? "bg-primary-subtle font-medium text-primary" : "text-text-secondary hover:bg-bg-muted"
+                    sort === v ? "bg-primary-subtle font-medium text-primary-on-subtle" : "text-text-secondary hover:bg-bg-muted"
                   }`}>
                   {label}
                 </Link>
@@ -201,7 +201,7 @@ function FacetGroup({
                 href={url({ [param]: on ? undefined : value } as Partial<Search>)}
                 aria-pressed={on}
                 className={`flex h-11 items-center justify-between gap-2 rounded-md px-2 text-body ${
-                  on ? "bg-primary-subtle font-medium text-primary" : "hover:bg-bg-muted"
+                  on ? "bg-primary-subtle font-medium text-primary-on-subtle" : "hover:bg-bg-muted"
                 }`}
               >
                 <span className="min-w-0 truncate">{value}</span>

@@ -84,7 +84,7 @@ export function ViewToggle({
           aria-pressed={view === v}
           className={`flex h-11 min-w-11 items-center justify-center rounded-md border px-3 text-caption font-medium capitalize ${
             view === v
-              ? "border-primary bg-primary-subtle text-primary"
+              ? "border-primary bg-primary-subtle text-primary-on-subtle"
               : "border-border text-text-secondary hover:bg-bg-muted"
           }`}
         >

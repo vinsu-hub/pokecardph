@@ -82,7 +82,7 @@ export default async function VendorListingsPage({
             href={`/vendor/listings?tab=${t}`}
             className={`flex h-11 items-center gap-2 rounded-md px-4 text-body font-medium capitalize ${
               tab === t
-                ? "bg-primary-subtle text-primary"
+                ? "bg-primary-subtle text-primary-on-subtle"
                 : "border border-border bg-bg text-text-secondary hover:bg-bg-muted"
             }`}
           >
