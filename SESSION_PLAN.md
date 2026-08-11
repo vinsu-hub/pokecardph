@@ -535,7 +535,10 @@ None.
 **Spec:** `CONTEXT/POKECARD_PH_PHASE7_SCAN_3D.md` (arrived 2026-08-11, after Phase 7 was built)
 **Vault:** `PokeCard PH - Scan and 3D`
 
-**Status:** 📋 Specced only — zero code written.
+**Status:** 🟡 Partially built 2026-08-12, ahead of schedule — the buyer-facing viewer exists and is
+live in production, using test images the user supplied (`pokemoncards/`, gitignored). Still missing:
+real `getUserMedia` capture, `scan_sessions` schema, and out-of-request photometric processing — see
+below for exactly what landed and what didn't.
 
 > ⚠️ **Phase 7 as built does not match its spec.** It was built from the two reference images alone
 > because no spec existed — it was the only phase that never had one. The spec describes
@@ -555,6 +558,31 @@ its flat photos. And still no auto-grading model: the vendor's stated grade stay
 
 The capture wizard shell is largely correct and can be kept; it needs a camera behind it and a
 processor after it.
+
+### What actually landed 2026-08-12
+The buyer-facing half only, pulled forward from user-supplied test images rather than a real
+capture, and deployed. **`CardSurface.tsx`** (Three.js / `@react-three/fiber`) replaced the CSS-3D
+internals of `Inspector3D.tsx` with the spec's real mechanic — a flat plane, a spring-damped virtual
+light following the cursor, not a rotating object. Confirmed lazy-loaded (864KB of JS present only on
+`/card/[id]/3d`, absent from `/card/[id]`) and light-tracking confirmed by byte-diffing screenshots
+at different cursor positions, since a static frame can't prove motion by itself.
+
+**The honest limit:** a normal map needs one face under several *known* light angles; the supplied
+assets are 4 flat images, so `.dev/prep-cards.mjs` derives relief from artwork luminance (Sobel
+gradients) instead of measuring it. That's real light-play, sourced from the art, not a physical
+scan — the viewer says so inline and this never touches `scan_status`. Real capture replaces the
+lookup in `lib/photos.ts`, not the viewer itself.
+
+**Also landed in the same pass, because it was nearly free once `cards.image_url` was wired:** real
+card art across the whole app. `image_url` existed in schema and types since Phase 1 but was never
+selected or rendered — every tile used a generated gradient. `CardArt.tsx` now renders it with the
+gradient as an explicit fallback (most of the catalog still has none). Tiles moved from
+`aspect-[3/4]` to `aspect-[5/7]`, the real card ratio. One graded listing now carries a real PSA slab
+photo (split from the supplied composite scan) instead of a placeholder.
+
+**Still not built:** `scan_sessions` schema, real `getUserMedia` capture, and
+`/api/scan/[sessionId]/process` running actual photometric stereo out of the request cycle. Those
+remain exactly as specced above.
 
 ---
 
