@@ -21,6 +21,8 @@ import { addToCart } from "@/lib/cart-actions";
  * treatment from SHOP PAGE.png and VENDOR STORE VIEW.png so it reads as the
  * same product.
  *
+ * The 3D toggle now routes to /card/[id]/3d (Phase 7).
+ *
  * Deliberately NOT built (unspecced mockup features, raised not dropped):
  * AR View, the Market Price comparison widget, Pop. Higher, Add to Watchlist.
  */
@@ -75,14 +77,12 @@ export default async function CardDetailPage({
             <span className="rounded-md bg-primary px-3 py-1.5 text-caption font-medium text-white">
               2D View
             </span>
-            {/* Phase 7. Present so the affordance is discoverable, disabled so
-                it can't lie about what exists. */}
-            <span
-              title="3D inspection arrives in a later release"
-              className="cursor-not-allowed rounded-md border border-border px-3 py-1.5 text-caption font-medium text-text-muted"
+            <Link
+              href={`/card/${listing.id}/3d`}
+              className="rounded-md border border-border px-3 py-1.5 text-caption font-medium text-text-secondary transition-colors duration-(--duration-instant) hover:border-primary hover:text-primary"
             >
               3D View
-            </span>
+            </Link>
           </div>
 
           <div className="relative mt-3 aspect-[4/3] overflow-hidden rounded-lg border border-border">

@@ -116,6 +116,12 @@ export default async function VendorListingsPage({
                 <StatusPill tone={TONE[l.status as keyof typeof TONE] ?? "info"}>
                   {l.status}
                 </StatusPill>
+                <Link
+                  href={`/vendor/listings/${l.id}/scan`}
+                  className="flex h-11 items-center rounded-md border border-border px-3 text-caption font-medium"
+                >
+                  Scan
+                </Link>
                 <form action={setStatus}>
                   <input type="hidden" name="id" value={l.id} />
                   <input

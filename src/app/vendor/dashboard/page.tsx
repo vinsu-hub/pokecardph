@@ -105,14 +105,14 @@ export default async function VendorDashboardPage({
           <section>
             <h2 className="text-h2 font-semibold">Quick Actions</h2>
             <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {[
+              {([
                 { href: "/vendor/listings/add", label: "Add Listing" },
                 { href: "/vendor/auctions/create", label: "Create Auction" },
                 { href: "/vendor/orders", label: "View Orders" },
                 { href: "/vendor/trade-requests", label: "Trade Requests" },
                 { href: "/vendor/listings", label: "All Listings" },
-                { href: "#", label: "Scan Card", disabled: true, note: "Scan & grade arrives in a later release" },
-              ].map((a) => (
+                { href: "/vendor/listings", label: "Scan Card" },
+              ] as { href: string; label: string; disabled?: boolean; note?: string }[]).map((a) => (
                 <li key={a.label}>
                   {a.disabled ? (
                     <span title={a.note} className="flex h-20 cursor-not-allowed items-center justify-center rounded-lg border border-border bg-bg text-center text-body font-medium text-text-muted opacity-50">
