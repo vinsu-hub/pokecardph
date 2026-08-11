@@ -8,6 +8,7 @@ import { getCartCount } from "@/lib/cart";
 import { addToCart } from "@/lib/cart-actions";
 import { php } from "@/lib/utils";
 import { conditionLabel, type ListingCard } from "@/lib/supabase/types";
+import { primaryPhoto, testBackFor, testNormalMapFor } from "@/lib/photos";
 
 /**
  * 3D Inspection.
@@ -44,6 +45,12 @@ export default async function Inspect3DPage({
   const listing = data as unknown as ListingCard;
   const { cards: card, shops: shop } = listing;
 
+  // A vendor's own photo of this exact item outranks the catalog's stock
+  // image of the card, same rule as Card Detail's hero.
+  const albedo = primaryPhoto(listing.photos) ?? card?.image_url ?? null;
+  const normal = testNormalMapFor(albedo);
+  const backAlbedo = testBackFor(albedo);
+
   const specs: [string, string | null][] = [
     ["Name", card?.name ?? null],
     ["Set", card ? `${card.set_name}${card.card_number ? ` ${card.card_number}` : ""}` : null],
@@ -79,7 +86,12 @@ export default async function Inspect3DPage({
             </span>
           </header>
 
-          <Inspector3D name={card?.name ?? "Card"} />
+          <Inspector3D
+            name={card?.name ?? "Card"}
+            albedo={albedo}
+            normal={normal}
+            backAlbedo={backAlbedo}
+          />
         </div>
 
         <aside className="flex flex-col gap-4">
@@ -116,10 +128,11 @@ export default async function Inspect3DPage({
             </p>
           </section>
 
-          <p className="rounded-md bg-attention-bg px-3 py-2 text-caption text-attention">
-            The photometric scan pipeline isn&apos;t built yet, so these faces are
-            placeholders. The viewer, angles and lighting are real.
-          </p>
+          {!albedo && (
+            <p className="rounded-md bg-attention-bg px-3 py-2 text-caption text-attention">
+              This listing has no photo yet, so there is no surface to show.
+            </p>
+          )}
         </aside>
       </div>
     </AppShell>

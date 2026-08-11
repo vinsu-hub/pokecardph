@@ -11,6 +11,8 @@ import { php } from "@/lib/utils";
 import { conditionLabel, type ListingCard } from "@/lib/supabase/types";
 import { getCartCount } from "@/lib/cart";
 import { addToCart } from "@/lib/cart-actions";
+import { CardArt } from "@/components/buyer/CardArt";
+import { primaryPhoto } from "@/lib/photos";
 
 /**
  * Card Detail (2D).
@@ -85,11 +87,19 @@ export default async function CardDetailPage({
             </Link>
           </div>
 
-          <div className="relative mt-3 aspect-[4/3] overflow-hidden rounded-lg border border-border">
+          {/* Portrait, not the old 4:3 landscape box — a real card photo in a
+              landscape frame gets cropped through the artwork. Capped by height
+              so a tall card can't push the buy panel off the fold. */}
+          <div className="relative mt-3 mx-auto aspect-[5/7] max-h-[560px] w-fit overflow-hidden rounded-lg border border-border">
             <span className="absolute top-3 left-3 z-10 rounded-md bg-grade-bg px-2.5 py-1 text-caption font-medium text-grade-text">
               {conditionLabel(listing)}
             </span>
-            <CardArt name={card.name} />
+            <CardArt
+              name={card.name}
+              src={primaryPhoto(listing.photos) ?? card.image_url}
+              priority
+              sizes="(min-width: 1024px) 40vw, 90vw"
+            />
           </div>
 
           <section className="mt-6 rounded-lg border border-border bg-bg p-(--card-pad)">
@@ -196,20 +206,5 @@ function BuyActions({ listingId, shopId }: { listingId: string; shopId: string }
         Trade for This Card
       </Link>
     </>
-  );
-}
-
-function CardArt({ name }: { name: string }) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
-  return (
-    <div
-      className="absolute inset-0 grid place-items-center p-6 text-center"
-      style={{
-        background: `linear-gradient(150deg, hsl(${h} 70% 88%), hsl(${(h + 40) % 360} 65% 78%))`,
-      }}
-    >
-      <span className="text-h2 font-semibold text-text-primary/50">{name}</span>
-    </div>
   );
 }

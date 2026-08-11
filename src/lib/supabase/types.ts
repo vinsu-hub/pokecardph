@@ -49,6 +49,10 @@ export type Listing = {
   quantity: number;
   condition_notes: string | null;
   description: string | null;
+  /** jsonb — `[{ slot, url }]` as written by <ImageUpload>. Read it through
+   *  the helpers in `lib/photos.ts` rather than casting: the column predates
+   *  that shape and older rows may hold anything. */
+  photos: unknown;
   status: ListingStatus;
   created_at: string;
 };

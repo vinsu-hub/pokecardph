@@ -1,42 +1,81 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
+import type { SurfaceLighting } from "./CardSurface";
 
 /**
  * 3D Inspection.
  * Reference: REFERENCE IMAGES/ITEM VIEW WITH 3D MODEL VIEW.png
+ * Spec: POKECARD_PH_PHASE7_SCAN_3D.md §4.3
  *
- * Six angles, three lighting presets, drag-to-rotate. Built with CSS 3D
- * transforms rather than Three.js: the reference shows a slabbed card being
- * turned, which is a rigid rectangular solid — a full WebGL scene would add a
- * heavy dependency for a shape that CSS renders exactly. The photometric
- * normal-map pipeline this is meant to display doesn't exist yet, so the faces
- * are placeholders.
+ * The page chrome comes from the reference image — angle filmstrip, tool rail,
+ * lighting presets, side chevrons. The thing inside the frame comes from the
+ * spec, and the two disagree: the mockup shows a card being *rotated*, while
+ * the spec calls for a flat plane under a *moving light*. The spec wins on
+ * mechanic (it's the feature that shows condition), the mockup wins on layout.
+ * So the surrounding controls all still work, but they now drive light and
+ * tilt on a real WebGL surface instead of a CSS transform.
+ *
+ * Three.js is loaded only when this component mounts (§7) — it is not worth
+ * shipping to every Card Detail view when most listings have no scan.
  *
  * Deliberately NOT built: the AR View button in the mockup. It appears in no
  * spec and no schema, so it stays out rather than becoming a dead control.
  */
 
+const CardSurface = dynamic(() => import("./CardSurface"), {
+  ssr: false,
+  loading: () => <ViewerSkeleton />,
+});
+
+/** Tilt only — the plane never turns far enough to present its edge, because
+ *  an edge-on plane has no surface to light. Front/Back swap the texture
+ *  instead of spinning through 180°. */
 const ANGLES = [
   { key: "front", label: "Front", rx: 0, ry: 0 },
-  { key: "back", label: "Back", rx: 0, ry: 180 },
-  { key: "left", label: "Left", rx: 0, ry: -62 },
-  { key: "right", label: "Right", rx: 0, ry: 62 },
-  { key: "top", label: "Top", rx: 62, ry: 0 },
-  { key: "bottom", label: "Bottom", rx: -62, ry: 0 },
+  { key: "back", label: "Back", rx: 0, ry: 0 },
+  { key: "left", label: "Left", rx: 0, ry: -24 },
+  { key: "right", label: "Right", rx: 0, ry: 24 },
+  { key: "top", label: "Top", rx: 20, ry: 0 },
+  { key: "bottom", label: "Bottom", rx: -20, ry: 0 },
 ] as const;
 
 const LIGHTING = [
   { key: "studio", label: "Studio", note: "Clean and bright lighting",
-    bg: "radial-gradient(circle at 50% 25%, #2c3245 0%, #10131c 70%)", glare: 0.35 },
+    bg: "radial-gradient(circle at 50% 25%, #2c3245 0%, #10131c 70%)",
+    ambient: 0.55, intensity: 26, color: "#ffffff" },
   { key: "spotlight", label: "Spotlight", note: "Directional spotlight effect",
-    bg: "radial-gradient(circle at 30% 15%, #3d4560 0%, #080a10 65%)", glare: 0.6 },
+    bg: "radial-gradient(circle at 30% 15%, #3d4560 0%, #080a10 65%)",
+    ambient: 0.22, intensity: 44, color: "#fff6e8" },
   { key: "dark", label: "Dark Room", note: "Low light for holographic view",
-    bg: "radial-gradient(circle at 50% 50%, #14161f 0%, #05060a 80%)", glare: 0.85 },
+    bg: "radial-gradient(circle at 50% 50%, #14161f 0%, #05060a 80%)",
+    ambient: 0.06, intensity: 58, color: "#dce8ff" },
 ] as const;
 
-export function Inspector3D({ name }: { name: string }) {
+function ViewerSkeleton() {
+  return (
+    <div className="absolute inset-0 grid place-items-center bg-[#10131c]">
+      <div className="h-2/3 w-[22%] animate-pulse rounded-md bg-white/10" />
+    </div>
+  );
+}
+
+export function Inspector3D({
+  name,
+  albedo,
+  normal,
+  backAlbedo,
+}: {
+  name: string;
+  /** Front face texture. Null when the listing has no usable image at all. */
+  albedo: string | null;
+  /** Surface normals. Null renders a flat-lit card — still correct, just
+   *  without relief, which is the honest result for an unscanned listing. */
+  normal: string | null;
+  backAlbedo: string | null;
+}) {
   const [angle, setAngle] = useState<(typeof ANGLES)[number]["key"]>("front");
   const [light, setLight] = useState<(typeof LIGHTING)[number]["key"]>("studio");
   const [zoom, setZoom] = useState(1);
@@ -47,11 +86,25 @@ export function Inspector3D({ name }: { name: string }) {
   const rx = drag ? drag.rx : preset.rx;
   const ry = drag ? drag.ry : preset.ry;
 
+  // Back view swaps the texture rather than rotating through 180°, and falls
+  // back to the front when a listing has no back photo — most don't.
+  const face = angle === "back" ? (backAlbedo ?? albedo) : albedo;
+
+  const surfaceLighting: SurfaceLighting = {
+    ambient: lighting.ambient,
+    intensity: lighting.intensity,
+    color: lighting.color,
+    background: lighting.bg,
+  };
+
+  // Drag tilts the plane. Clamped much tighter than a rotating card would be:
+  // past ~35° a plane starts presenting its edge, and an edge-on plane has no
+  // lit surface left to inspect.
   function onPointerMove(e: React.PointerEvent) {
     if (e.buttons !== 1) return;
     setDrag((d) => ({
-      rx: Math.max(-80, Math.min(80, (d?.rx ?? preset.rx) - e.movementY * 0.5)),
-      ry: (d?.ry ?? preset.ry) + e.movementX * 0.5,
+      rx: Math.max(-35, Math.min(35, (d?.rx ?? preset.rx) - e.movementY * 0.25)),
+      ry: Math.max(-35, Math.min(35, (d?.ry ?? preset.ry) + e.movementX * 0.25)),
     }));
   }
 
@@ -62,18 +115,32 @@ export function Inspector3D({ name }: { name: string }) {
         onPointerMove={onPointerMove}
         onDoubleClick={() => { setDrag(null); setAngle("front"); setZoom(1); }}
         onWheel={(e) => setZoom((z) => Math.max(0.6, Math.min(2, z - e.deltaY * 0.001)))}
-        className="relative aspect-[16/10] cursor-grab overflow-hidden rounded-lg active:cursor-grabbing"
-        style={{ background: lighting.bg, perspective: "1400px" }}
+        className="relative aspect-[16/10] cursor-crosshair overflow-hidden rounded-lg"
+        style={{ background: lighting.bg }}
       >
-        <div
-          className="absolute inset-0 grid place-items-center transition-transform duration-(--duration-base) ease-(--ease-out-soft)"
-          style={{
-            transform: `rotateX(${rx}deg) rotateY(${ry}deg) scale(${zoom})`,
-            transformStyle: "preserve-3d",
-          }}
-        >
-          <Slab name={name} glare={lighting.glare} />
-        </div>
+        {face ? (
+          <Suspense fallback={<ViewerSkeleton />}>
+            <CardSurface
+              albedo={face}
+              normal={angle === "back" ? null : normal}
+              tiltX={rx}
+              tiltY={ry}
+              zoom={zoom}
+              lighting={surfaceLighting}
+              className="absolute inset-0"
+            />
+          </Suspense>
+        ) : (
+          <div className="absolute inset-0 grid place-items-center px-6 text-center">
+            <p className="text-body text-white/70">
+              No photo for {name} yet, so there is no surface to light.
+            </p>
+          </div>
+        )}
+
+        <p className="pointer-events-none absolute inset-x-0 top-3 z-10 text-center text-caption text-white/70">
+          Move your mouse to light the card
+        </p>
 
         {/* Angle nudge arrows, matching the reference's side chevrons. */}
         <button
@@ -197,63 +264,14 @@ export function Inspector3D({ name }: { name: string }) {
           </ul>
         </section>
       </div>
-    </div>
-  );
-}
 
-/** A slabbed card as a rigid solid — front, back and four edges. */
-function Slab({ name, glare }: { name: string; glare: number }) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
-  const depth = 10;
-
-  return (
-    <div
-      className="relative h-[62%] w-[30%] min-w-[150px]"
-      style={{ transformStyle: "preserve-3d" }}
-    >
-      {/* Front */}
-      <div
-        className="absolute inset-0 overflow-hidden rounded-md border border-white/20"
-        style={{
-          transform: `translateZ(${depth / 2}px)`,
-          background: `linear-gradient(150deg, hsl(${h} 70% 84%), hsl(${(h + 40) % 360} 65% 68%))`,
-        }}
-      >
-        <div className="grid h-full place-items-center p-3 text-center">
-          <span className="text-caption font-medium text-text-primary/60">{name}</span>
-        </div>
-        {/* Holographic sweep — the thing lighting presets exist to show. */}
-        <span
-          aria-hidden
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(115deg, transparent 30%, rgba(255,255,255,.9) 48%, transparent 62%)",
-            opacity: glare,
-          }}
-        />
-      </div>
-
-      {/* Back */}
-      <div
-        className="absolute inset-0 rounded-md border border-white/20 bg-gradient-to-br from-indigo-700 to-indigo-900"
-        style={{ transform: `rotateY(180deg) translateZ(${depth / 2}px)` }}
-      />
-
-      {/* Edges */}
-      {[
-        { t: `rotateY(90deg) translateZ(calc(50% - ${depth / 2}px))`, cls: "inset-y-0 right-0 w-[10px]" },
-        { t: `rotateY(-90deg) translateZ(calc(50% - ${depth / 2}px))`, cls: "inset-y-0 left-0 w-[10px]" },
-        { t: `rotateX(90deg) translateZ(calc(50% - ${depth / 2}px))`, cls: "inset-x-0 top-0 h-[10px]" },
-        { t: `rotateX(-90deg) translateZ(calc(50% - ${depth / 2}px))`, cls: "inset-x-0 bottom-0 h-[10px]" },
-      ].map((e, i) => (
-        <div
-          key={i}
-          className={cn("absolute bg-slate-200/90", e.cls)}
-          style={{ transform: e.t }}
-        />
-      ))}
+      {normal && (
+        <p className="rounded-md bg-attention-bg px-3 py-2 text-caption text-attention">
+          This surface relief is derived from the card&apos;s artwork for testing the
+          viewer — it is not a condition scan and does not reflect this physical
+          card&apos;s actual surface. See real scan status on the listing itself.
+        </p>
+      )}
     </div>
   );
 }

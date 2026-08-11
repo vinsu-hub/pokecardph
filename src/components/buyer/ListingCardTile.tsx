@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { php } from "@/lib/utils";
 import { conditionLabel, type ListingCard } from "@/lib/supabase/types";
+import { CardArt } from "./CardArt";
 
 /**
  * The card tile used by Home/Browse, Search, and the storefront shelves.
@@ -24,11 +25,13 @@ export function ListingCardTile({ listing }: { listing: ListingCard }) {
       href={`/card/${listing.id}`}
       className="group flex flex-col overflow-hidden rounded-lg border border-border bg-bg shadow-rest transition-[transform,box-shadow] duration-(--duration-fast) ease-(--ease-out-soft) hover:-translate-y-0.5 hover:shadow-elevated"
     >
-      <div className="relative aspect-[3/4] bg-bg-muted">
+      {/* 5:7 is the real card aspect (2.5" x 3.5"), so photographed art fills
+          the frame exactly instead of letterboxing inside a 3:4 box. */}
+      <div className="relative aspect-[5/7] overflow-hidden bg-bg-muted">
         <span className="absolute top-2 left-2 z-10 rounded-md bg-grade-bg px-2 py-0.5 text-caption font-medium text-grade-text">
           {conditionLabel(listing)}
         </span>
-        <CardArt name={card.name} />
+        <CardArt name={card.name} src={card.image_url} />
       </div>
 
       <div className="flex flex-1 flex-col gap-0.5 p-3">
@@ -44,26 +47,6 @@ export function ListingCardTile({ listing }: { listing: ListingCard }) {
         </p>
       </div>
     </Link>
-  );
-}
-
-/**
- * Placeholder art. Real card images aren't in the seed — hotlinking Pokémon
- * card scans raises the same licensing question as the audio, so this renders a
- * stable per-card gradient rather than a broken image or a "no photo" icon.
- */
-function CardArt({ name }: { name: string }) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
-  return (
-    <div
-      className="absolute inset-0 grid place-items-center p-3 text-center"
-      style={{
-        background: `linear-gradient(150deg, hsl(${h} 70% 88%), hsl(${(h + 40) % 360} 65% 78%))`,
-      }}
-    >
-      <span className="text-caption font-medium text-text-primary/60">{name}</span>
-    </div>
   );
 }
 
