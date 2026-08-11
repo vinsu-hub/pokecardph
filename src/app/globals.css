@@ -103,6 +103,19 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* Dropdown entrance — fade + 4px slide down. Reused by the account menu and
+   any future menu, so the vocabulary stays single. */
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Numerics that must not reflow as digits change — prices, countdowns,
    stat cards. Referenced by the motion spec's tabular-number requirement. */
 .tabular {

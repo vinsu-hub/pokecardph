@@ -59,9 +59,12 @@ const NAV: NavItem[] = [
 export function AppShell({
   children,
   cartCount = 0,
+  user,
 }: {
   children: React.ReactNode;
   cartCount?: number;
+  /** Passed from a server component; null when signed out. */
+  user?: { email: string; displayName: string | null } | null;
 }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -119,9 +122,7 @@ export function AppShell({
 
           <div className="ml-auto flex items-center gap-1 lg:ml-0">
             <CartButton count={cartCount} />
-            <div className="grid size-9 place-items-center rounded-full bg-bg-muted text-caption font-medium text-text-secondary">
-              ?
-            </div>
+            <AccountMenu user={user ?? null} />
           </div>
         </div>
 
@@ -240,6 +241,88 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
     >
       {item.label}
     </Link>
+  );
+}
+
+/**
+ * Avatar dropdown. Entrance is fade + 4px slide down at --duration-fast, the
+ * same mechanic the storefront uses for tab content — reused rather than
+ * invented, per the auth spec's "no new motion vocabulary" rule.
+ */
+function AccountMenu({
+  user,
+}: {
+  user: { email: string; displayName: string | null } | null;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (!user) {
+    return (
+      <Link
+        href="/login"
+        className="flex h-11 items-center rounded-md px-3 text-body font-medium text-primary transition-colors duration-(--duration-instant) hover:bg-bg-muted"
+      >
+        Sign in
+      </Link>
+    );
+  }
+
+  const initials = (user.displayName || user.email)
+    .split(/[\s@.]+/)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase() ?? "")
+    .join("");
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label="Account menu"
+        className="grid size-11 place-items-center rounded-full"
+      >
+        <span className="grid size-9 place-items-center rounded-full bg-primary-subtle text-caption font-medium text-primary">
+          {initials}
+        </span>
+      </button>
+
+      {open && (
+        <>
+          {/* Click-away. */}
+          <button
+            aria-hidden
+            tabIndex={-1}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-40 cursor-default"
+          />
+          <div
+            className="absolute right-0 z-50 mt-1 w-56 origin-top-right rounded-lg border border-border bg-bg py-1 shadow-elevated"
+            style={{ animation: "menu-in var(--duration-fast) var(--ease-out-soft)" }}
+          >
+            <p className="truncate px-4 py-2 text-caption text-text-secondary">
+              {user.email}
+            </p>
+            <span className="mx-2 block h-px bg-border" />
+            <Link href="/orders" onClick={() => setOpen(false)} className="flex h-11 items-center px-4 text-body hover:bg-bg-muted">
+              My Orders
+            </Link>
+            <Link href="/trade" onClick={() => setOpen(false)} className="flex h-11 items-center px-4 text-body hover:bg-bg-muted">
+              My Trades
+            </Link>
+            <Link href="/vendor/dashboard" onClick={() => setOpen(false)} className="flex h-11 items-center px-4 text-body hover:bg-bg-muted">
+              Sell
+            </Link>
+            <span className="mx-2 block h-px bg-border" />
+            {/* Low-stakes and reversible — no confirmation modal. */}
+            <form action="/auth/signout" method="post">
+              <button type="submit" className="flex h-11 w-full items-center px-4 text-left text-body text-danger hover:bg-bg-muted">
+                Sign Out
+              </button>
+            </form>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

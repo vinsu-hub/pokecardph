@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getSessionUser, shellUser } from "@/lib/auth";
 import { AppShell } from "@/components/shared/AppShell";
 import { FilterSheet } from "@/components/shared/FilterSheet";
 import { ListingCardTile } from "@/components/buyer/ListingCardTile";
@@ -30,6 +31,7 @@ export default async function HomePage({
   const sort = sp.sort ?? "newest";
 
   const supabase = await createClient();
+  const user = await getSessionUser();
 
   let query = supabase
     .from("listings")
@@ -54,7 +56,7 @@ export default async function HomePage({
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <AppShell>
+    <AppShell user={shellUser(user)}>
       <div className="flex flex-col gap-6">
         <header>
           <h1 className="text-display font-bold">Pokémon Cards for Sale</h1>
