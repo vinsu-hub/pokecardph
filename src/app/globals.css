@@ -66,8 +66,16 @@
   --color-neutral-bg: #ccfbf1;
 
   /* --- Type ------------------------------------------------------------- */
-  /* One typeface. Weight does the differentiation work — no serif, no display. */
+  /* One typeface for UI text. Weight does the differentiation work — no
+     serif, no display font, with exactly one named exception below. */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* The Pokémon TCG's own display face — trademark-exposed, same category as
+     the two Pokémon-derived SFX assets flagged in lib/audio.ts and
+     POKECARD_PH_DESIGN_SYSTEM.md's licensing note. Used only for the Events
+     hub's "Who's That Pokémon?" heading — never for UI text, never as a
+     second general-purpose font. */
+  --font-pokemon: var(--font-pokemon-solid), var(--font-sans);
 
   --text-display: 2rem; /* 32px — page titles */
   --text-display--line-height: 1.2;
