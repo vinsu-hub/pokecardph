@@ -21,11 +21,14 @@ export type Card = {
   rarity: string | null;
   language: string | null;
   image_url: string | null;
+  generation: string | null;
+  pull_rate: string | null;
 };
 
 export type Shop = {
   id: string;
   name: string;
+  description: string | null;
   logo_url: string | null;
   location: string | null;
   tier: "free" | "premium";

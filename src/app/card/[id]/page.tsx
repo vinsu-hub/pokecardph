@@ -60,6 +60,8 @@ export default async function CardDetailPage({
     ["Set", card.set_name],
     ["Card Number", card.card_number],
     ["Rarity", card.rarity],
+    ["Generation", card.generation],
+    ["Approx. Pull Rate", card.pull_rate],
   ];
 
   return (
@@ -165,11 +167,21 @@ export default async function CardDetailPage({
                 Premium Shop
               </span>
             )}
+
+            {shop.description && (
+              <div className="mt-3 border-t border-border pt-3">
+                <h3 className="text-caption font-medium text-text-secondary">
+                  About {shop.name}
+                </h3>
+                <p className="mt-1 text-body text-text-secondary">{shop.description}</p>
+              </div>
+            )}
+
             <Link
               href={`/shops/${shop.id}`}
-              className="mt-3 flex h-11 items-center justify-center rounded-md border border-border text-body font-medium"
+              className="mt-3 flex h-11 items-center justify-center rounded-md border border-primary text-body font-medium text-primary transition-colors duration-(--duration-instant) hover:bg-primary-subtle"
             >
-              View Shop
+              Visit Store
             </Link>
           </div>
         </div>

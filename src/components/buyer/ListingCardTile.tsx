@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { php } from "@/lib/utils";
 import { conditionLabel, type ListingCard } from "@/lib/supabase/types";
+import { play } from "@/lib/audio";
 import { CardArt } from "./CardArt";
 
 /**
@@ -23,6 +26,7 @@ export function ListingCardTile({ listing }: { listing: ListingCard }) {
   return (
     <Link
       href={`/card/${listing.id}`}
+      onClick={() => play("select")}
       className="group flex flex-col overflow-hidden rounded-lg border border-border bg-bg shadow-rest transition-[transform,box-shadow] duration-(--duration-fast) ease-(--ease-out-soft) hover:-translate-y-0.5 hover:shadow-elevated"
     >
       {/* 5:7 is the real card aspect (2.5" x 3.5"), so photographed art fills
