@@ -94,6 +94,14 @@ export default async function CreateAuctionPage() {
   const inAnHour = new Date(now.getTime() + 60 * 60 * 1000);
   const iso = (d: Date) => d.toISOString().slice(0, 16);
 
+  if (user.billingStatus === "restricted") {
+    return (
+      <VendorShell shopName={user.shopName ?? "Your shop"}>
+        <RestrictedNotice />
+      </VendorShell>
+    );
+  }
+
   return (
     <VendorShell shopName={user.shopName ?? "Your shop"}>
       <h1 className="text-display font-bold">Create Auction</h1>
@@ -167,6 +175,26 @@ function Field({
     <div className="flex flex-col gap-1.5">
       <label htmlFor={htmlFor} className="text-body font-medium">{label}</label>
       {children}
+    </div>
+  );
+}
+
+/**
+ * A restricted shop (unpaid invoice past grace) cannot create new listings or
+ * auctions. Existing live ones stay visible to buyers — the spec is explicit
+ * that a vendor's unpaid bill must not punish buyers mid-purchase.
+ */
+function RestrictedNotice() {
+  return (
+    <div className="rounded-lg border border-danger-bg bg-danger-bg p-(--card-pad)">
+      <h2 className="text-h3 font-semibold text-danger">Account restricted</h2>
+      <p className="mt-1 text-body text-danger">
+        Your account is restricted due to an unpaid invoice. Settle it to resume
+        creating listings — your existing listings remain live for buyers.
+      </p>
+      <a href="/vendor/billing" className="mt-3 inline-flex h-11 items-center rounded-md bg-danger px-4 text-body font-medium text-white">
+        Go to Billing
+      </a>
     </div>
   );
 }

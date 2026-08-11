@@ -8,6 +8,8 @@ export type SessionUser = {
   /** The signed-in user's shop, if they've completed vendor onboarding. */
   shopId: string | null;
   shopName: string | null;
+  /** Drives the restricted-state guard on listing and auction creation. */
+  billingStatus: "trial" | "active" | "past_due" | "restricted" | null;
 };
 
 /**
@@ -33,7 +35,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   const { data: shop } = await supabase
     .from("shops")
-    .select("id, name")
+    .select("id, name, billing_status")
     .eq("vendor_id", user.id)
     .maybeSingle();
 
@@ -44,6 +46,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     role: (profile?.role as "buyer" | "vendor") ?? "buyer",
     shopId: shop?.id ?? null,
     shopName: shop?.name ?? null,
+    billingStatus: (shop?.billing_status as SessionUser["billingStatus"]) ?? null,
   };
 }
 
