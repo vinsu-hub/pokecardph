@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/shared/AppShell";
 import { CheckoutForm } from "@/components/buyer/CheckoutForm";
 import { conditionLabel } from "@/lib/supabase/types";
-import { getCartDetail, clearCart } from "@/lib/cart";
+import { getCartDetail } from "@/lib/cart";
+import { clearCart } from "@/lib/cart-actions";
 import { platformFee } from "@/lib/utils";
 
 /**

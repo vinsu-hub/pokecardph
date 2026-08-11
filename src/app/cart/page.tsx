@@ -7,7 +7,8 @@ import {
 } from "@/components/shared/StickyActionBar";
 import { php, platformFee } from "@/lib/utils";
 import { conditionLabel } from "@/lib/supabase/types";
-import { getCartDetail, setQty, removeFromCart } from "@/lib/cart";
+import { getCartDetail } from "@/lib/cart";
+import { setQty, removeFromCart } from "@/lib/cart-actions";
 
 /**
  * Cart. Line items grouped implicitly by shop, per the spec's cart-checkout

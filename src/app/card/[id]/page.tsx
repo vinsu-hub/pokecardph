@@ -9,7 +9,8 @@ import {
 } from "@/components/shared/StickyActionBar";
 import { php } from "@/lib/utils";
 import { conditionLabel, type ListingCard } from "@/lib/supabase/types";
-import { addToCart, getCartCount } from "@/lib/cart";
+import { getCartCount } from "@/lib/cart";
+import { addToCart } from "@/lib/cart-actions";
 
 /**
  * Card Detail (2D).
