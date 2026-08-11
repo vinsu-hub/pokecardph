@@ -29,7 +29,7 @@ export default async function OrdersPage() {
       {(orders?.length ?? 0) === 0 ? (
         <div className="mt-6 rounded-lg border border-border bg-bg px-6 py-12 text-center">
           <p className="text-body text-text-secondary">No orders yet.</p>
-          <Link href="/" className="mt-4 inline-flex h-11 items-center rounded-md bg-primary px-4 text-body font-medium text-white">
+          <Link href="/browse" className="mt-4 inline-flex h-11 items-center rounded-md bg-primary px-4 text-body font-medium text-white">
             Start browsing
           </Link>
         </div>

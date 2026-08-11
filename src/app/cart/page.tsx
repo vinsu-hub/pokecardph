@@ -33,7 +33,7 @@ export default async function CartPage() {
         <div className="mt-6 rounded-lg border border-border bg-bg px-6 py-12 text-center">
           <p className="text-body text-text-secondary">Your cart is empty.</p>
           <Link
-            href="/"
+            href="/browse"
             className="mt-4 inline-flex h-11 items-center rounded-md bg-primary px-4 text-body font-medium text-white"
           >
             Browse cards

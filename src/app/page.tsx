@@ -1,269 +1,180 @@
 import Link from "next/link";
+import Image from "next/image";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getSessionUser, shellUser } from "@/lib/auth";
-import { AppShell } from "@/components/shared/AppShell";
-import { FilterSheet } from "@/components/shared/FilterSheet";
-import {
-  ListingResults,
-  ViewToggle,
-  FilterSelect,
-} from "@/components/buyer/ListingResults";
-import { getCartCount } from "@/lib/cart";
-import { conditionLabel, type ListingCard } from "@/lib/supabase/types";
+import { getSessionUser } from "@/lib/auth";
+import { LandingHeader } from "@/components/shared/LandingHeader";
+import { LandingPreview, type PreviewCard } from "@/components/shared/LandingPreview";
+import { GoogleMark } from "@/components/shared/GoogleMark";
+import { primaryPhoto } from "@/lib/photos";
+import type { Card, Listing, Shop } from "@/lib/supabase/types";
 
 /**
- * Home / Browse.
- * Reference: REFERENCE IMAGES/SHOP PAGE.png — despite the filename, that image
- * is this screen, not the shop storefront.
+ * Marketing landing page.
+ * Reference: REFERENCE IMAGES/MAIN LANDING PAGE.png,
+ *            REFERENCE IMAGES/LANDING PAGE IMAGE BACKGROUND.png (the hero photo itself)
  *
- * Horizontal filter bar (Search results uses a left sidebar instead — the two
- * reference screens are deliberately different), result count, card grid with
- * a grid/list toggle, pagination.
+ * Lives at the domain root, but only for signed-out visitors — a signed-in
+ * session redirects straight to /browse, the real marketplace. This is new
+ * scope, not a rename: through Phase 7 the root WAS Home/Browse, chosen
+ * deliberately so window-shopping needed no account and no splash screen.
+ * That "no browse wall" property is preserved, just moved down one click —
+ * "Explore" in the header and "View All" on every preview tab go straight to
+ * /browse with no gate.
  */
 export const dynamic = "force-dynamic";
 
-const PAGE_SIZE = 20;
-
-type Search = {
-  page?: string; type?: string; sort?: string; view?: string;
-  set?: string; condition?: string; price?: string; seller?: string;
-};
-
-const PRICE_BANDS: Record<string, [number, number]> = {
-  "0-1000": [0, 1000],
-  "1000-2500": [1000, 2500],
-  "2500-5000": [2500, 5000],
-  "5000+": [5000, Number.MAX_SAFE_INTEGER],
-};
-
-export default async function HomePage({
+export default async function LandingPage({
   searchParams,
 }: {
-  searchParams: Promise<Search>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const sp = await searchParams;
-  const page = Math.max(1, Number(sp.page ?? 1));
-  const type = sp.type ?? "all";
-  const sort = sp.sort ?? "newest";
-  const view = sp.view === "list" ? "list" : "grid";
-
-  const supabase = await createClient();
   const user = await getSessionUser();
-  const cartCount = await getCartCount();
-
-  // One unfiltered fetch backs both the facet options and the results, so the
-  // dropdowns always offer values that actually exist in the catalogue.
-  const { data: allData, error } = await supabase
-    .from("listings")
-    .select("*, cards(*), shops(*)")
-    .eq("status", "active")
-    .eq("sale_type", "fixed");
-
-  let rows = (allData ?? []) as unknown as ListingCard[];
-
-  const uniq = (pick: (l: ListingCard) => string | null): [string, string][] => {
-    const s = new Set<string>();
-    for (const l of rows) { const v = pick(l); if (v) s.add(v); }
-    return [...s].sort().map((v) => [v, v]);
-  };
-  const setOptions = uniq((l) => l.cards?.set_name ?? null);
-  const conditionOptions = uniq((l) => conditionLabel(l));
-  const sellerOptions = (() => {
-    const m = new Map<string, string>();
-    for (const l of rows) if (l.shops) m.set(l.shops.id, l.shops.name);
-    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  })();
-
-  if (type === "graded") rows = rows.filter((l) => l.listing_type === "graded");
-  if (type === "non_graded") rows = rows.filter((l) => l.listing_type === "non_graded");
-  if (sp.set) rows = rows.filter((l) => l.cards?.set_name === sp.set);
-  if (sp.condition) rows = rows.filter((l) => conditionLabel(l) === sp.condition);
-  if (sp.seller) rows = rows.filter((l) => l.shop_id === sp.seller);
-  if (sp.price && PRICE_BANDS[sp.price]) {
-    const [lo, hi] = PRICE_BANDS[sp.price];
-    rows = rows.filter((l) => Number(l.price) >= lo && Number(l.price) < hi);
+  if (user) {
+    // Preserve query params on the redirect — a link like "/?type=graded"
+    // (bookmarked, shared, or from before this route existed) should still
+    // land a signed-in visitor on the filtered grid, not silently drop intent.
+    const sp = await searchParams;
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      if (typeof v === "string") qs.set(k, v);
+    }
+    const query = qs.toString();
+    redirect(query ? `/browse?${query}` : "/browse");
   }
 
-  rows =
-    sort === "price_asc" ? [...rows].sort((a, b) => Number(a.price) - Number(b.price))
-    : sort === "price_desc" ? [...rows].sort((a, b) => Number(b.price) - Number(a.price))
-    : [...rows].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+  const supabase = await createClient();
 
-  const total = rows.length;
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const pageRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const [{ data: saleRows }, { data: auctionRows }] = await Promise.all([
+    supabase
+      .from("listings")
+      .select("id, price, photos, cards(name, set_name, rarity, image_url), shops(name, rating)")
+      .eq("status", "active")
+      .eq("sale_type", "fixed")
+      .order("created_at", { ascending: false })
+      .limit(10),
+    supabase
+      .from("auctions")
+      .select("id, current_bid, starting_bid, listings(description, item_category, cards(name, set_name, rarity, image_url), shops(name, rating))")
+      .in("status", ["scheduled", "live"])
+      .order("end_time", { ascending: true })
+      .limit(10),
+  ]);
 
-  /** Preserve the other params when changing one. */
-  const url = (patch: Partial<Search>) => {
-    const next = new URLSearchParams();
-    for (const [k, v] of Object.entries({ ...sp, ...patch })) if (v) next.set(k, String(v));
-    return `/?${next.toString()}`;
+  type SaleRow = { id: string; price: number; photos: unknown; cards: Card | null; shops: Shop | null };
+  type AuctionRow = {
+    id: string;
+    current_bid: number | null;
+    starting_bid: number;
+    listings: (Pick<Listing, "description" | "item_category"> & { cards: Card | null; shops: Shop | null }) | null;
   };
 
-  const activeCount = [sp.set, sp.condition, sp.price, sp.seller].filter(Boolean).length
-    + (type === "all" ? 0 : 1);
+  const forSale: PreviewCard[] = ((saleRows ?? []) as unknown as SaleRow[])
+    .filter((l) => l.cards && l.shops)
+    .map((l) => ({
+      id: l.id,
+      href: `/card/${l.id}`,
+      name: l.cards!.name,
+      subtitle: l.cards!.rarity ?? l.cards!.set_name,
+      price: Number(l.price),
+      sellerName: l.shops!.name,
+      sellerRating: Number(l.shops!.rating),
+      imageUrl: primaryPhoto(l.photos) ?? l.cards!.image_url,
+    }));
 
-  const filterBar = (
-    <form action="/" className="flex flex-wrap items-center gap-2">
-      <input type="hidden" name="sort" value={sort} />
-      <input type="hidden" name="view" value={view} />
-      <TypeTabs active={type} />
-      <FilterSelect name="set" label="All Sets" value={sp.set} options={setOptions} />
-      <FilterSelect name="condition" label="All Conditions" value={sp.condition} options={conditionOptions} />
-      <FilterSelect name="price" label="All Prices" value={sp.price} options={[
-        ["0-1000", "Under ₱1,000"],
-        ["1000-2500", "₱1,000 – ₱2,500"],
-        ["2500-5000", "₱2,500 – ₱5,000"],
-        ["5000+", "₱5,000 and up"],
-      ]} />
-      <FilterSelect name="seller" label="All Sellers" value={sp.seller} options={sellerOptions} />
-      <button className="h-11 rounded-md bg-primary px-4 text-body font-medium text-white transition-transform duration-(--duration-instant) active:scale-[0.98]">
-        Apply
-      </button>
-      {activeCount > 0 && (
-        <Link href="/" className="flex h-11 items-center px-2 text-body text-text-secondary underline">
-          Clear all
-        </Link>
-      )}
-    </form>
-  );
+  // Every active listing already supports "Trade for This Card" on Card
+  // Detail — there's no separate for-trade inventory, so this reuses the same
+  // feed under an accurate label rather than querying something that doesn't
+  // exist as its own concept.
+  const forTrade = forSale;
+
+  const auctions: PreviewCard[] = ((auctionRows ?? []) as unknown as AuctionRow[])
+    .filter((a) => a.listings?.cards && a.listings?.shops)
+    .map((a) => ({
+      id: a.id,
+      href: `/auctions/${a.id}`,
+      name: a.listings!.cards!.name,
+      subtitle: a.listings!.cards!.rarity ?? a.listings!.cards!.set_name,
+      price: Number(a.current_bid ?? a.starting_bid),
+      sellerName: a.listings!.shops!.name,
+      sellerRating: Number(a.listings!.shops!.rating),
+      imageUrl: a.listings!.cards!.image_url,
+    }));
 
   return (
-    <AppShell user={shellUser(user)} cartCount={cartCount}>
-      <div className="flex flex-col gap-6">
-        <header>
-          <h1 className="text-display font-bold">Pokémon Cards for Sale</h1>
-          <p className="mt-1 text-body text-text-secondary">
-            Buy from verified Filipino collectors and vendors.
-          </p>
-        </header>
+    <div className="flex min-h-svh flex-col">
+      <LandingHeader />
 
-        {/* Desktop: the reference's horizontal filter bar.
-            Mobile: the same controls inside the shared bottom sheet. */}
-        <div className="rounded-lg border border-border bg-bg p-3">
-          <div className="hidden lg:block">{filterBar}</div>
-          <div className="flex items-center justify-between gap-2 lg:hidden">
-            <FilterSheet mobileOnly activeCount={activeCount}>
-              <div className="rounded-lg border border-border bg-bg p-(--card-pad)">
-                {filterBar}
-              </div>
-            </FilterSheet>
-            <ViewToggle view={view} url={(v) => url({ view: v })} />
+      <main className="grid flex-1 lg:grid-cols-2">
+        {/* ---- Left: pitch + preview + CTA ---- */}
+        <div className="flex min-w-0 flex-col justify-center px-(--gutter) py-10 lg:py-16">
+          <div className="mx-auto w-full max-w-[560px]">
+            <h1 className="text-display font-bold" style={{ fontSize: "clamp(2.25rem, 4vw, 3rem)", lineHeight: 1.1 }}>
+              Collect. Trade. Battle. <span className="text-primary">Connect.</span>
+            </h1>
+            <p className="mt-3 text-body text-text-secondary">
+              The trusted marketplace for Pokémon cards and collectibles in the Philippines.
+            </p>
+
+            <div className="mt-6">
+              <LandingPreview forSale={forSale} auctions={auctions} forTrade={forTrade} />
+            </div>
+
+            <p className="mt-8 text-center text-body text-text-secondary">
+              Join thousands of trainers and collectors today!
+            </p>
+
+            <button
+              type="button"
+              disabled
+              title="Google Sign-In is coming soon"
+              className="mt-3 flex h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-bg text-body font-medium opacity-50"
+            >
+              <GoogleMark />
+              Continue with Google
+            </button>
+
+            <div className="my-4 flex items-center gap-3">
+              <span className="h-px flex-1 bg-border" />
+              <span className="text-caption text-text-muted">or</span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
+
+            <div className="flex gap-3">
+              <Link
+                href="/login"
+                className="flex h-11 flex-1 items-center justify-center rounded-md bg-primary text-body font-medium text-white transition-colors duration-(--duration-instant) hover:bg-primary-hover"
+              >
+                Sign Up
+              </Link>
+              <Link
+                href="/login"
+                className="flex h-11 flex-1 items-center justify-center rounded-md border border-border text-body font-medium text-text-primary hover:bg-bg-muted"
+              >
+                Log In
+              </Link>
+            </div>
+
+            <p className="mt-4 text-center text-caption text-text-muted">
+              By continuing, you agree to our{" "}
+              <span title="Coming soon">Terms of Service</span> and{" "}
+              <span title="Coming soon">Privacy Policy</span>.
+            </p>
           </div>
         </div>
 
-        {error ? (
-          <p className="rounded-lg border border-danger-bg bg-danger-bg px-4 py-3 text-body text-danger">
-            Couldn&apos;t load listings: {error.message}
-          </p>
-        ) : (
-          <>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-body text-text-secondary">
-                <span className="font-medium text-text-primary tabular">
-                  {total.toLocaleString("en-PH")}
-                </span>{" "}
-                listing{total === 1 ? "" : "s"} found
-              </p>
-              <div className="flex items-center gap-2">
-                <SortLinks active={sort} url={url} />
-                <span className="hidden lg:block">
-                  <ViewToggle view={view} url={(v) => url({ view: v })} />
-                </span>
-              </div>
-            </div>
-
-            <ListingResults
-              listings={pageRows}
-              view={view}
-              empty="No listings match these filters yet."
-            />
-
-            {pages > 1 && (
-              <nav className="flex items-center justify-center gap-1 pt-2" aria-label="Pagination">
-                {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
-                  <Link
-                    key={p}
-                    href={url({ page: String(p) })}
-                    aria-current={p === page ? "page" : undefined}
-                    className={`grid h-11 min-w-11 place-items-center rounded-md px-3 text-body font-medium tabular ${
-                      p === page
-                        ? "bg-primary text-white"
-                        : "border border-border bg-bg text-text-secondary hover:bg-bg-muted"
-                    }`}
-                  >
-                    {p}
-                  </Link>
-                ))}
-              </nav>
-            )}
-          </>
-        )}
-      </div>
-    </AppShell>
-  );
-}
-
-const TYPES = [
-  { value: "all", label: "All Cards" },
-  { value: "graded", label: "Graded" },
-  { value: "non_graded", label: "Non-Graded" },
-];
-
-/** Radio-backed so the tabs submit with the rest of the filter form. */
-function TypeTabs({ active }: { active: string }) {
-  return (
-    <div className="flex flex-wrap gap-1" role="group" aria-label="Card type">
-      {TYPES.map((t) => (
-        <label
-          key={t.value}
-          className={`flex h-11 cursor-pointer items-center rounded-md px-4 text-body font-medium transition-colors duration-(--duration-instant) ${
-            active === t.value
-              ? "bg-primary-subtle text-primary-on-subtle"
-              : "border border-border bg-bg text-text-secondary hover:bg-bg-muted"
-          }`}
-        >
-          <input
-            type="radio"
-            name="type"
-            value={t.value}
-            defaultChecked={active === t.value}
-            className="sr-only"
+        {/* ---- Right: hero photo ---- */}
+        <div className="relative hidden min-h-[420px] lg:block">
+          <Image
+            src="/brand/landing-hero.webp"
+            alt=""
+            fill
+            priority
+            sizes="50vw"
+            className="object-cover"
           />
-          {t.label}
-        </label>
-      ))}
-    </div>
-  );
-}
-
-const SORTS = [
-  { value: "newest", label: "Newest" },
-  { value: "price_asc", label: "Price ↑" },
-  { value: "price_desc", label: "Price ↓" },
-];
-
-function SortLinks({
-  active, url,
-}: {
-  active: string;
-  url: (p: Partial<Search>) => string;
-}) {
-  return (
-    <div className="hidden gap-1 sm:flex">
-      {SORTS.map((s) => (
-        <Link
-          key={s.value}
-          href={url({ sort: s.value })}
-          className={`flex h-11 items-center rounded-md px-3 text-body transition-colors duration-(--duration-instant) ${
-            active === s.value
-              ? "bg-primary-subtle font-medium text-primary-on-subtle"
-              : "text-text-secondary hover:bg-bg-muted"
-          }`}
-        >
-          {s.label}
-        </Link>
-      ))}
+        </div>
+      </main>
     </div>
   );
 }

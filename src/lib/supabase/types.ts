@@ -38,8 +38,13 @@ export type Shop = {
 export type Listing = {
   id: string;
   shop_id: string;
-  card_id: string;
+  /** Nullable since Phase 4 — sealed product, merch, and signed items have no
+   *  catalog card. Only item_category = 'card' populates it. */
+  card_id: string | null;
   listing_type: "graded" | "non_graded";
+  /** Added by 0004_auctions.sql. */
+  sale_type: "fixed" | "auction";
+  item_category: "card" | "sealed_pack" | "sealed_box" | "merch" | "signed_item";
   grading_company: string | null;
   grade: string | null;
   cert_number: string | null;

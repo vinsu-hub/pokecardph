@@ -124,7 +124,7 @@ export function VendorShell({
         </nav>
 
         <div className="hidden px-4 lg:block">
-          <Link href="/" className="text-caption text-primary">
+          <Link href="/browse" className="text-caption text-primary">
             ← Back to buyer view
           </Link>
         </div>

@@ -65,7 +65,7 @@ export default async function CardDetailPage({
   return (
     <AppShell user={shellUser(user)} cartCount={cartCount}>
       <nav className="mb-4 text-caption text-text-secondary">
-        <Link href="/" className="hover:text-text-primary">Home</Link>
+        <Link href="/browse" className="hover:text-text-primary">Home</Link>
         <span className="mx-1.5">›</span>
         <Link href={`/shops/${shop.id}`} className="hover:text-text-primary">{shop.name}</Link>
         <span className="mx-1.5">›</span>

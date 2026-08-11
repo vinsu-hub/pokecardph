@@ -138,7 +138,7 @@ export default async function TradeHubPage({
             {!want ? (
               <p className="mt-2 text-body text-text-secondary">
                 Open a card from{" "}
-                <Link href="/" className="text-primary underline">browse</Link>{" "}
+                <Link href="/browse" className="text-primary underline">browse</Link>{" "}
                 and choose <span className="font-medium">Trade for This Card</span> to start.
               </p>
             ) : available.length === 0 ? (

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type");
-  const next = searchParams.get("next") ?? "/";
+  const next = searchParams.get("next") ?? "/browse";
 
   // Magic links arrive as token_hash, OAuth as code. Both land here; both
   // write the session through the SSR client so cookies are chunked correctly.
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       type: type as "magiclink" | "email" | "recovery" | "invite",
     });
     if (!error) {
-      const dest = next.startsWith("/") ? next : "/";
+      const dest = next.startsWith("/") ? next : "/browse";
       return NextResponse.redirect(`${origin}${dest}`);
     }
   }
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     if (!error) {
       // `next` is internal-only — reject absolute URLs so this can't be used
       // as an open redirect.
-      const dest = next.startsWith("/") ? next : "/";
+      const dest = next.startsWith("/") ? next : "/browse";
       return NextResponse.redirect(`${origin}${dest}`);
     }
   }

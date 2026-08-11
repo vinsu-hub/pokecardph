@@ -44,7 +44,7 @@ type NavItem = {
 };
 
 const NAV: NavItem[] = [
-  { href: "/", label: "Home", icon: Home },
+  { href: "/browse", label: "Home", icon: Home },
   { href: "/search", label: "Search", icon: Search },
   { href: "/trade", label: "Trade", icon: ArrowLeftRight },
   { href: "/events", label: "Events", icon: Sparkles, tag: "NEW" },
@@ -77,8 +77,7 @@ export function AppShell({
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const isActive = (href: string) => pathname.startsWith(href);
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -94,7 +93,7 @@ export function AppShell({
             {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
 
-          <Logo />
+          <Logo href="/browse" />
 
           {/* Desktop search */}
           <form action="/search" className="hidden flex-1 lg:block">

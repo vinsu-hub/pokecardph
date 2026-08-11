@@ -16,7 +16,7 @@ import { Logo } from "./Logo";
 
 const COLUMNS: [string, [string, string, boolean?][]][] = [
   ["Shop", [
-    ["All Cards", "/"],
+    ["All Cards", "/browse"],
     ["Graded Cards", "/?type=graded"],
     ["Booster Packs", "/auctions"],
     ["Accessories", "/search?q=accessor", true],
@@ -42,7 +42,7 @@ export function Footer() {
     <footer className="mt-12 bg-ink text-white">
       <div className="mx-auto grid max-w-(--page-max) gap-8 px-(--gutter) py-10 lg:grid-cols-[1.2fr_repeat(3,1fr)_1.4fr]">
         <div>
-          <Logo reversed />
+          <Logo reversed href="/browse" />
           <p className="mt-3 text-caption text-white/60">
             © {new Date().getFullYear()} PokeCard PH. All rights reserved.
           </p>
