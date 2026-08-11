@@ -60,6 +60,11 @@ export type Listing = {
   photos: unknown;
   status: ListingStatus;
   created_at: string;
+  /** Added by 0001_base.sql, unused until Tier 2's real capture pipeline. */
+  normal_map_url: string | null;
+  /** Added by 0013_scan_tier.sql. Null = not yet scanned — the publish gate
+   *  blocks status becoming 'active' without one. */
+  scan_tier: "flat" | "full" | null;
 };
 
 /** A listing joined to its catalog card and owning shop — the shape every

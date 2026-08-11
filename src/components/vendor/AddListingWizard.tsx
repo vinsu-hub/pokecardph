@@ -55,6 +55,10 @@ export function AddListingWizard({
   const [comparePrice, setComparePrice] = useState("");
   const [qty, setQty] = useState("1");
   const [description, setDescription] = useState("");
+  // Whether Flat Scan is satisfied — a Front photo IS the flat scan, so this
+  // gates Publish without any separate upload step. Save as Draft is never
+  // gated: a vendor should be able to save progress before they have a photo.
+  const [hasFrontPhoto, setHasFrontPhoto] = useState(false);
 
   const card = cards.find((c) => c.id === cardId);
   const condition = graded ? `${company} ${grade}` : "Non-Graded";
@@ -185,8 +189,10 @@ export function AddListingWizard({
           <div hidden={step !== 3}>
             <h2 className="text-h3 font-semibold">Photos &amp; Description</h2>
             <p className="mt-2 text-caption text-text-secondary">
-              Photos upload as you pick them. A listing can publish without them
-              and falls back to placeholder art, so a draft is never blocked.
+              Photos upload as you pick them. A draft never needs one — but a
+              <span className="font-medium text-text-primary"> Front photo is required to publish</span>:
+              it doubles as this listing&apos;s Flat Scan, the minimum every listing
+              needs so buyers see real surface detail, not a placeholder.
             </p>
             <div className="mt-3">
               <ImageUpload
@@ -195,6 +201,7 @@ export function AddListingWizard({
                 prefix={`${shopId}/${draftId}`}
                 slots={PHOTO_SLOTS}
                 required={["Front", "Back"]}
+                onChange={(images) => setHasFrontPhoto(Boolean(images["Front"]))}
               />
             </div>
             <div className="mt-3 flex flex-col gap-1.5">
@@ -223,6 +230,13 @@ export function AddListingWizard({
             <p className="mt-3 text-caption text-text-secondary">
               Publishing makes this live on the marketplace immediately.
             </p>
+            {!hasFrontPhoto && (
+              <p className="mt-2 rounded-md bg-attention-bg px-3 py-2 text-caption text-attention">
+                Add a Front photo in Photos &amp; Description before publishing —
+                it&apos;s this listing&apos;s Flat Scan and every listing needs one.
+                You can still save as a draft without it.
+              </p>
+            )}
           </div>
 
           {/* Nav */}
@@ -246,6 +260,7 @@ export function AddListingWizard({
                 </SubmitButton>
                 <SubmitButton name="intent" value="publish" pendingLabel="Publishing…"
                   onClick={() => play("listing-live")}
+                  disabled={!hasFrontPhoto}
                   className="h-11 flex-1 rounded-md bg-primary text-body font-medium text-white">
                   Publish Listing
                 </SubmitButton>

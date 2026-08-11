@@ -62,11 +62,21 @@ function ViewerSkeleton() {
   );
 }
 
+function ShieldCheckIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="size-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M10 2l6.5 2.5v4.8c0 4.3-2.7 8-6.5 9.2-3.8-1.2-6.5-4.9-6.5-9.2V4.5L10 2z" strokeLinejoin="round" />
+      <path d="M7 10l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function Inspector3D({
   name,
   albedo,
   normal,
   backAlbedo,
+  scanTier,
 }: {
   name: string;
   /** Front face texture. Null when the listing has no usable image at all. */
@@ -75,6 +85,12 @@ export function Inspector3D({
    *  without relief, which is the honest result for an unscanned listing. */
   normal: string | null;
   backAlbedo: string | null;
+  /** The listing's real scan_tier column — independent of whether `normal`
+   *  happens to be populated from the test-only artwork-derived lookup below.
+   *  A listing can be scanTier="flat" (no normal, warning badge) while a
+   *  *different* concern — the hardcoded test cards — separately has a
+   *  derived normal map with its own caveat. The two never get conflated. */
+  scanTier: "flat" | "full" | null;
 }) {
   const [angle, setAngle] = useState<(typeof ANGLES)[number]["key"]>("front");
   const [light, setLight] = useState<(typeof LIGHTING)[number]["key"]>("studio");
@@ -110,6 +126,25 @@ export function Inspector3D({
 
   return (
     <div className="grid gap-4">
+      {/* Two-tier scanning badge — independent of the viewer itself. A Flat
+          Scan still gets a real, working viewer (flat-lit, no relief); the
+          badge is about setting the right expectation for what the surface
+          detail can and can't show, not about gating the feature. */}
+      {scanTier === "full" && (
+        <p className="flex items-center gap-2 rounded-md bg-success-bg px-3 py-2 text-caption font-medium text-success">
+          <ShieldCheckIcon />
+          Platform Verified Condition — multi-angle scan on file for this listing.
+        </p>
+      )}
+      {scanTier === "flat" && (
+        <p className="rounded-md bg-attention-bg px-3 py-2 text-caption text-attention">
+          <span className="font-medium">Flat Scan.</span> This 3D view is generated
+          from a single photo — surface condition (scratches, whitening, gloss)
+          may not be visible. The vendor&apos;s written description and stated
+          grade are authoritative.
+        </p>
+      )}
+
       {/* ---- Viewer ---- */}
       <div
         onPointerMove={onPointerMove}

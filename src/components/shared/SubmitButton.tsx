@@ -22,6 +22,7 @@ export function SubmitButton({
   name,
   value,
   onClick,
+  disabled,
 }: {
   children: React.ReactNode;
   pendingLabel?: string;
@@ -29,6 +30,10 @@ export function SubmitButton({
   name?: string;
   value?: string;
   onClick?: () => void;
+  /** An additional, caller-supplied reason to disable — e.g. a form
+   *  precondition not yet met. Combined with, never replaces, the
+   *  in-flight `pending` disable. */
+  disabled?: boolean;
 }) {
   const { pending } = useFormStatus();
 
@@ -38,7 +43,7 @@ export function SubmitButton({
       name={name}
       value={value}
       onClick={onClick}
-      disabled={pending}
+      disabled={pending || disabled}
       aria-busy={pending}
       className={cn(
         "transition-all duration-(--duration-instant) active:scale-[0.98]",

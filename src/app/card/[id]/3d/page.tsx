@@ -91,6 +91,7 @@ export default async function Inspect3DPage({
             albedo={albedo}
             normal={normal}
             backAlbedo={backAlbedo}
+            scanTier={listing.scan_tier}
           />
         </div>
 

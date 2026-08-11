@@ -15,6 +15,14 @@ import { cn } from "@/lib/utils";
  * The scan supports the vendor's stated grade and never overrides it. There is
  * deliberately no auto-grading model — that's the product's trust proposition,
  * not a technical shortfall.
+ *
+ * Scanning is now mandatory to publish, but tiered — not a hard gate through
+ * this page. A vendor's Front photo from the listing wizard already satisfies
+ * the Flat Scan tier by itself, so there's nothing to "skip" here in the sense
+ * of leaving a requirement unmet. This page is the opt-in upgrade path to the
+ * Full Condition Scan tier (a real normal map, a verified badge, no warning
+ * badge on the listing) — completing it doesn't write anything yet, since the
+ * capture and photometric processing behind it aren't built.
  */
 
 export const SCAN_STEPS = [
@@ -32,7 +40,17 @@ export const SCAN_STEPS = [
     hint: "Move in close on the surface so scratches and print lines are visible." },
 ] as const;
 
-export function ScanStudio({ onSkipHref }: { onSkipHref: string }) {
+export function ScanStudio({
+  onSkipHref,
+  flatTierSatisfied,
+}: {
+  onSkipHref: string;
+  /** Whether this listing already has a Front photo (or a completed scan) —
+   *  true means Flat Scan is already satisfied and this page is purely an
+   *  optional upgrade; false means the vendor still needs a photo before
+   *  they can publish at all, scan or no scan. */
+  flatTierSatisfied: boolean;
+}) {
   const [step, setStep] = useState(0);
   const [captured, setCaptured] = useState<number[]>([]);
   const [flash, setFlash] = useState(false);
@@ -275,6 +293,20 @@ export function ScanStudio({ onSkipHref }: { onSkipHref: string }) {
           </div>
         </section>
 
+        {/* Scanning is mandatory but tiered, not a hard gate on this specific
+            page — a Front photo already satisfies Flat Scan on its own, so
+            "skip" never means "leave the requirement unmet." */}
+        <p
+          className={cn(
+            "rounded-md px-3 py-2 text-caption",
+            flatTierSatisfied ? "bg-success-bg text-success" : "bg-attention-bg text-attention",
+          )}
+        >
+          {flatTierSatisfied
+            ? "Your uploaded photo already satisfies the Flat Scan requirement — this full capture is an optional upgrade."
+            : "You'll still need at least a Front photo in Photos & Description before you can publish, scan or no scan."}
+        </p>
+
         <div className="flex gap-2">
           <a
             href={onSkipHref}
@@ -286,7 +318,7 @@ export function ScanStudio({ onSkipHref }: { onSkipHref: string }) {
             href={onSkipHref}
             className="flex h-11 flex-[2] items-center justify-center rounded-md bg-primary text-body font-medium text-white"
           >
-            {done === SCAN_STEPS.length ? "Finish & Continue" : "Skip Scan & Continue"}
+            {done === SCAN_STEPS.length ? "Finish & Continue" : "Continue with Flat Scan"}
           </a>
         </div>
       </aside>

@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/auth";
 import { VendorShell } from "@/components/vendor/VendorShell";
 import { ScanStudio } from "@/components/vendor/ScanStudio";
 import { cn } from "@/lib/utils";
+import { primaryPhoto } from "@/lib/photos";
 
 /**
  * Scan & Grade.
@@ -38,12 +39,18 @@ export default async function ScanPage({
   const supabase = await createClient();
   const { data: listing } = await supabase
     .from("listings")
-    .select("id, shop_id, cards(name, set_name)")
+    .select("id, shop_id, photos, scan_tier, cards(name, set_name)")
     .eq("id", id)
     .maybeSingle();
 
   if (!listing || listing.shop_id !== user.shopId) notFound();
   const card = listing.cards as unknown as { name: string; set_name: string } | null;
+
+  // Flat tier is satisfied the moment a Front photo exists — no separate
+  // upload here, that photo IS the flat scan. Full tier isn't set by this
+  // page yet (the capture below is a state-machine shell; see ScanStudio's
+  // own doc comment), so it can only already be true from a prior real scan.
+  const flatTierSatisfied = primaryPhoto(listing.photos) !== null || listing.scan_tier !== null;
 
   return (
     <VendorShell shopName={user.shopName ?? "Your shop"}>
@@ -120,7 +127,7 @@ export default async function ScanPage({
           </header>
 
           <div className="mt-6">
-            <ScanStudio onSkipHref={`/card/${id}`} />
+            <ScanStudio onSkipHref={`/card/${id}`} flatTierSatisfied={flatTierSatisfied} />
           </div>
         </div>
       </div>

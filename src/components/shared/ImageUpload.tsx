@@ -37,6 +37,7 @@ export function ImageUpload({
   prefix,
   slots,
   required = [],
+  onChange,
 }: {
   /** Hidden form field carrying the JSON array of uploads. */
   name: string;
@@ -48,6 +49,9 @@ export function ImageUpload({
   /** Slots marked with a * in the label. Not enforced here; the wizard decides
    *  whether to block publishing, because a draft may legitimately lack them. */
   required?: string[];
+  /** Fires after every upload/remove, so a parent can react to which slots are
+   *  filled — e.g. the Add Listing wizard gating Publish on a Front photo. */
+  onChange?: (images: Record<string, UploadedImage>) => void;
 }) {
   const [images, setImages] = useState<Record<string, UploadedImage>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -77,7 +81,13 @@ export function ImageUpload({
     }
 
     const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-    setImages((prev) => ({ ...prev, [slot]: { slot, url: data.publicUrl, path } }));
+    // Computed outside the updater, then both calls happen here in the event
+    // handler — an updater function must stay pure, and calling onChange
+    // (which itself calls the parent's setState) from inside one risks React
+    // re-invoking it and firing the callback more than once.
+    const next = { ...images, [slot]: { slot, url: data.publicUrl, path } };
+    setImages(next);
+    onChange?.(next);
     setBusy(null);
   }
 
@@ -87,11 +97,10 @@ export function ImageUpload({
     setBusy(slot);
     const supabase = createClient();
     await supabase.storage.from(bucket).remove([img.path]);
-    setImages((prev) => {
-      const next = { ...prev };
-      delete next[slot];
-      return next;
-    });
+    const next = { ...images };
+    delete next[slot];
+    setImages(next);
+    onChange?.(next);
     setBusy(null);
   }
 

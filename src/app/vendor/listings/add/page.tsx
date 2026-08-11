@@ -13,7 +13,7 @@ async function publishListing(formData: FormData) {
   if (!user.shopId) redirect("/vendor/onboarding");
 
   const graded = String(formData.get("listingType")) === "graded";
-  const status = String(formData.get("intent")) === "draft" ? "draft" : "active";
+  const wantsPublish = String(formData.get("intent")) !== "draft";
 
   // `photos` arrives as JSON from <ImageUpload>. The files are already in
   // Storage by this point — the browser uploaded them directly under the
@@ -33,6 +33,18 @@ async function publishListing(formData: FormData) {
     photos = [];
   }
 
+  // Scanning is mandatory to publish, but tiered: a Front photo alone
+  // satisfies Flat Scan. Enforced here, not just in the wizard's disabled
+  // button — the client-side gate is a courtesy, never trusted on its own.
+  const hasFrontPhoto = photos.some((p) => p.slot.toLowerCase().startsWith("front"));
+  if (wantsPublish && !hasFrontPhoto) {
+    throw new Error(
+      "Add a Front photo before publishing — it doubles as this listing's Flat Scan, the minimum every listing needs.",
+    );
+  }
+  const status = wantsPublish ? "active" : "draft";
+  const scanTier = hasFrontPhoto ? "flat" : null;
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("listings")
@@ -49,6 +61,7 @@ async function publishListing(formData: FormData) {
       quantity: Number(formData.get("quantity") || 1),
       description: String(formData.get("description") || "") || null,
       photos,
+      scan_tier: scanTier,
       status,
       sale_type: "fixed",
       item_category: "card",

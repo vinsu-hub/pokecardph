@@ -120,6 +120,16 @@ function Plane({
         decay={1.4}
       />
       <group ref={group}>
+        {/* Thin backing box, not a second plane: the point is that the card
+           has a visible edge as it tilts, which a plane-behind-a-plane
+           wouldn't show from the side. This is what keeps a Flat Scan
+           reading as an object instead of a photo pasted onto nothing —
+           per the pasted conversation's "beveled-edge card mesh" idea. */}
+        <mesh position={[0, 0, -0.03]}>
+          <boxGeometry args={[2.5, 3.5, 0.06]} />
+          <meshStandardMaterial color="#f2f2f0" roughness={0.7} metalness={0.05} />
+        </mesh>
+
         {/* 5:7 — the real card aspect. */}
         <mesh>
           <planeGeometry args={[2.5, 3.5]} />
