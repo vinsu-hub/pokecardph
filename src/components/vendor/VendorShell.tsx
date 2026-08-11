@@ -18,12 +18,12 @@ import { cn } from "@/lib/utils";
 type Item = { href: string; label: string; disabled?: boolean; note?: string };
 
 const NAV: Item[] = [
-  { href: "/vendor/dashboard", label: "Dashboard", disabled: true, note: "Vendor dashboard arrives with the vendor core loop" },
-  { href: "/vendor/listings", label: "Listings", disabled: true, note: "Listing management arrives with the vendor core loop" },
-  { href: "/vendor/orders", label: "Orders", disabled: true, note: "Vendor orders arrive with the vendor core loop" },
+  { href: "/vendor/dashboard", label: "Dashboard" },
+  { href: "/vendor/listings", label: "Listings" },
+  { href: "/vendor/orders", label: "Orders" },
   { href: "/vendor/trade-requests", label: "Trade Requests" },
   { href: "/vendor/auctions", label: "Auctions" },
-  { href: "/vendor/settings", label: "Shop Settings", disabled: true, note: "Shop settings arrive with the vendor core loop" },
+  { href: "/vendor/settings", label: "Shop Settings", disabled: true, note: "Shop settings arrive in a later release" },
 ];
 
 export function VendorShell({

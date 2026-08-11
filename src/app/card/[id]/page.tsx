@@ -9,6 +9,7 @@ import {
 } from "@/components/shared/StickyActionBar";
 import { php } from "@/lib/utils";
 import { conditionLabel, type ListingCard } from "@/lib/supabase/types";
+import { addToCart, getCartCount } from "@/lib/cart";
 
 /**
  * Card Detail (2D).
@@ -33,6 +34,7 @@ export default async function CardDetailPage({
   const { id } = await params;
   const supabase = await createClient();
   const user = await getSessionUser();
+  const cartCount = await getCartCount();
 
   const { data } = await supabase
     .from("listings")
@@ -56,7 +58,7 @@ export default async function CardDetailPage({
   ];
 
   return (
-    <AppShell user={shellUser(user)}>
+    <AppShell user={shellUser(user)} cartCount={cartCount}>
       <nav className="mb-4 text-caption text-text-secondary">
         <Link href="/" className="hover:text-text-primary">Home</Link>
         <span className="mx-1.5">›</span>
@@ -176,21 +178,16 @@ export default async function CardDetailPage({
   );
 }
 
-/**
- * Cart and messaging are Phase 1 surfaces that don't exist yet, so those two
- * are disabled rather than linking nowhere. "Trade for This Card" is live —
- * it's this phase's entry point into the trade builder.
- */
+/** Add to Cart and Trade for This Card are both live. */
 function BuyActions({ listingId, shopId }: { listingId: string; shopId: string }) {
   return (
     <>
-      <button
-        disabled
-        title="Cart and checkout arrive with the buyer core loop"
-        className="h-11 w-full cursor-not-allowed rounded-md bg-primary text-body font-medium text-white opacity-50"
-      >
-        Add to Cart
-      </button>
+      <form action={addToCart}>
+        <input type="hidden" name="listingId" value={listingId} />
+        <button className="h-11 w-full rounded-md bg-primary text-body font-medium text-white transition-all duration-(--duration-instant) hover:bg-primary-hover active:scale-[0.98]">
+          Add to Cart
+        </button>
+      </form>
       <Link
         href={`/trade?want=${listingId}&shop=${shopId}`}
         className="flex h-11 w-full items-center justify-center rounded-md border border-primary text-body font-medium text-primary transition-transform duration-(--duration-instant) active:scale-[0.98]"
