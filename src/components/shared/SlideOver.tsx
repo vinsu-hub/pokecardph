@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { useIsClient } from "@/lib/use-is-client";
 
 /**
  * The mobile counterpart to every right rail, and the desktop detail panel
@@ -25,10 +26,9 @@ export function SlideOver({
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
-  // Portals can't render during SSR — mount first, then portal, so the server
-  // and first client render agree.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // Portals can't render during SSR — wait for hydration so the server and
+  // first client render agree.
+  const mounted = useIsClient();
 
   // Escape to close, and lock body scroll while open.
   useEffect(() => {
