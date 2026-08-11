@@ -11,6 +11,7 @@ import {
   MessageSquare,
   ShoppingCart,
   Gavel,
+  Sparkles,
   Menu,
   X,
   Store,
@@ -41,13 +42,14 @@ const NAV: NavItem[] = [
   { href: "/", label: "Home", icon: Home },
   { href: "/search", label: "Search", icon: Search },
   { href: "/trade", label: "Trade", icon: ArrowLeftRight },
-  { href: "/auctions", label: "Auctions", icon: Gavel },
+  { href: "/events", label: "Events", icon: Sparkles },
   { href: "/orders", label: "Orders", icon: Package },
 ];
 
 /** Beyond the 5-item tab-bar cap — desktop nav and the mobile overflow menu
  *  only. The cap is a hard UX rule, so this is where the 6th item goes. */
 const OVERFLOW: NavItem[] = [
+  { href: "/auctions", label: "Auctions", icon: Gavel },
   {
     href: "/messages",
     label: "Messages",

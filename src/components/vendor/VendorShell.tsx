@@ -38,6 +38,7 @@ const NAV: Item[] = [
   { href: "/vendor/orders", label: "Orders" },
   { href: "/vendor/trade-requests", label: "Trade Requests" },
   { href: "/vendor/auctions", label: "Auctions" },
+  { href: "/vendor/events", label: "Events" },
   { href: "/vendor/billing", label: "Billing" },
   { href: "/vendor/settings", label: "Shop Settings", disabled: true, note: "Shop settings arrive in a later release" },
 ];

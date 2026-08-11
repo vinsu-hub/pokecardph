@@ -256,3 +256,46 @@ body {
     transform: translateY(0);
   }
 }
+
+/* ============================================================================
+   Events — the reveal moment
+   The 800ms cross-dissolve lives in the component (it needs to be paired with
+   state); these are the two supporting animations.
+   ========================================================================== */
+
+@keyframes answer-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Small and tasteful — a few dozen particles, once. Never a screen-covering
+   effect, and hidden outright under reduced motion. */
+@keyframes confetti {
+  from {
+    opacity: 1;
+    transform: translateY(-10%) rotate(0deg);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(420%) rotate(540deg);
+  }
+}
+
+/* The one looping ambient animation permitted anywhere in this feature, and
+   only on an un-toggled notify bell. It stops the moment it's tapped. */
+@keyframes bell-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+.bell-idle {
+  animation: bell-pulse 2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bell-idle { animation: none; opacity: 1; }
+}
