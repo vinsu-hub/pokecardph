@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { php } from "@/lib/utils";
 import { play } from "@/lib/audio";
+import { SubmitButton } from "@/components/shared/SubmitButton";
 
 /**
  * Add Listing — the CANONICAL 4-step wizard.
@@ -224,15 +225,15 @@ export function AddListingWizard({
               </button>
             ) : (
               <>
-                <button type="submit" name="intent" value="draft"
+                <SubmitButton name="intent" value="draft" pendingLabel="Saving…"
                   className="h-11 rounded-md border border-border px-4 text-body font-medium">
                   Save as Draft
-                </button>
-                <button type="submit" name="intent" value="publish"
+                </SubmitButton>
+                <SubmitButton name="intent" value="publish" pendingLabel="Publishing…"
                   onClick={() => play("listing-live")}
-                  className="h-11 flex-1 rounded-md bg-primary text-body font-medium text-white active:scale-[0.98]">
+                  className="h-11 flex-1 rounded-md bg-primary text-body font-medium text-white">
                   Publish Listing
-                </button>
+                </SubmitButton>
               </>
             )}
           </div>

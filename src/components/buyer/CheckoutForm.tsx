@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { php } from "@/lib/utils";
+import { SubmitButton } from "@/components/shared/SubmitButton";
 
 /**
  * 4-step checkout: Review Cart → Delivery → Payment → Confirm.
@@ -140,12 +141,12 @@ export function CheckoutForm({
                 Continue
               </button>
             ) : (
-              <button
-                type="submit"
-                className="h-11 flex-1 rounded-md bg-primary text-body font-medium text-white transition-transform duration-(--duration-instant) active:scale-[0.98]"
+              <SubmitButton
+                pendingLabel="Placing order…"
+                className="h-11 flex-1 rounded-md bg-primary text-body font-medium text-white"
               >
                 Place Order
-              </button>
+              </SubmitButton>
             )}
           </div>
         </div>
