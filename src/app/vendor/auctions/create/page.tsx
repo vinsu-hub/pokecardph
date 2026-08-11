@@ -59,6 +59,14 @@ async function createAuction(formData: FormData) {
     .single();
   if (lErr) throw new Error(lErr.message);
 
+  // Action Event framing — additive, optional. A vendor checking this box
+  // gets the same bid table under a party-game presentation (hero banner,
+  // player cap, "How It Works"), not a different mechanic.
+  const isActionEvent = formData.get("isActionEvent") === "true";
+  const maxParticipants = formData.get("maxParticipants")
+    ? Number(formData.get("maxParticipants"))
+    : null;
+
   const { data: auction, error: aErr } = await supabase
     .from("auctions")
     .insert({
@@ -70,6 +78,14 @@ async function createAuction(formData: FormData) {
       start_time: new Date(startTime).toISOString(),
       end_time: new Date(endTime).toISOString(),
       status: new Date(startTime) <= new Date() ? "live" : "scheduled",
+      is_action_event: isActionEvent,
+      event_category: isActionEvent ? "bidding_war" : null,
+      event_title: isActionEvent ? String(formData.get("eventTitle") || "") || null : null,
+      event_subtitle: isActionEvent ? String(formData.get("eventSubtitle") || "") || null : null,
+      max_participants: isActionEvent ? maxParticipants : null,
+      prize_description: isActionEvent
+        ? String(formData.get("prizeDescription") || "") || null
+        : null,
     })
     .select("id")
     .single();
@@ -156,6 +172,53 @@ export default async function CreateAuctionPage() {
           <Field label="End time" htmlFor="endTime">
             <input id="endTime" name="endTime" type="datetime-local" required defaultValue={iso(inAnHour)} className="h-11 w-full rounded-md border border-border px-3 text-body" />
           </Field>
+        </div>
+
+        {/* Action Event toggle — pure CSS, no client component needed for a
+            plain show/hide. Uses group-has-checked rather than peer-checked:
+            the checkbox has to be physically wrapped in its <label> for the
+            touch-target audit to measure the label (not a bare 20px box) as
+            the tap target, which rules out the usual peer-sibling pattern —
+            peer-checked needs its target to be a direct sibling of the
+            checkbox, and a label-wrapped checkbox has no such sibling.
+            has-checked reaches into descendants instead, so the fields div
+            can react to a checkbox nested anywhere inside this group.
+            Reference: ACTION OR BIDDING LAYOUT.png. */}
+        <div className="group rounded-lg border border-border bg-bg-muted p-4">
+          <label htmlFor="isActionEvent" className="flex h-11 cursor-pointer items-center gap-3">
+            <input
+              type="checkbox"
+              id="isActionEvent"
+              name="isActionEvent"
+              value="true"
+              className="size-5 shrink-0 rounded border-border accent-primary"
+            />
+            <span className="text-body font-medium">
+              Make this an Action Event <span aria-hidden>⚡</span>
+            </span>
+          </label>
+          <p className="text-caption text-text-secondary">
+            Same auction, presented as a joinable community event — a hero
+            banner, a player cap, and a spot on the Events tab instead of only
+            Auctions Browse.
+          </p>
+
+          <div className="hidden flex-col gap-4 pt-2 group-has-checked:mt-2 group-has-checked:flex group-has-checked:border-t group-has-checked:border-border group-has-checked:pt-4">
+            <Field label="Event title" htmlFor="eventTitle">
+              <input id="eventTitle" name="eventTitle" placeholder="e.g. Pack Battle Night" className="h-11 w-full rounded-md border border-border px-3 text-body" />
+            </Field>
+            <Field label="Event subtitle" htmlFor="eventSubtitle">
+              <input id="eventSubtitle" name="eventSubtitle" placeholder="e.g. Bidding War" className="h-11 w-full rounded-md border border-border px-3 text-body" />
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Max participants (optional)" htmlFor="maxParticipants">
+                <input id="maxParticipants" name="maxParticipants" type="number" min="1" placeholder="e.g. 32" className="h-11 w-full rounded-md border border-border px-3 text-body tabular" />
+              </Field>
+              <Field label="Prize description (optional)" htmlFor="prizeDescription">
+                <input id="prizeDescription" name="prizeDescription" placeholder="e.g. Booster Packs & Store Credits" className="h-11 w-full rounded-md border border-border px-3 text-body" />
+              </Field>
+            </div>
+          </div>
         </div>
 
         <button className="h-11 rounded-md bg-primary text-body font-medium text-white active:scale-[0.98]">
