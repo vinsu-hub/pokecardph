@@ -728,6 +728,66 @@ re-verified against production, not just localhost.
 
 ---
 
+## Phase 11 — Post-deploy polish: 3D fix, admin access, real seed content
+
+**Spec:** an 11-item post-deploy feedback pass on the live site, covering one genuine regression, two
+"looks broken but is actually just empty" reports, and eight content/access gaps. **Status:** ✅ Built
+and deployed 2026-08-12.
+
+**3D viewer flicker (real bug, not perception):** `CardSurface.tsx`'s backing box, added in Phase
+7-rev for the Flat Scan "reads as an object" requirement, had its front face landing at exactly the
+same `z` as the card plane — z-fighting, invisible in any static screenshot and only visible while the
+viewing angle changes, matching the report exactly. Fixed with a small position epsilon; a permanent
+regression script (`.dev/verify-3d-flicker.mjs`) drags through a full rotation sweep and byte-diffs
+per-frame luminance rather than eyeballing single frames, since the bug is inherently invisible to a
+static check.
+
+**Admin access:** new unlinked `/admin-login` — real `supabase.auth.signInWithPassword`, not a
+hardcoded check. Reuses the existing seeded `foilandflame@pokecard.test` vendor account (given a real
+password via the Admin API) rather than creating a second `admin@` profile, which would have needed
+its own shop under the `shops.vendor_id` 1:1 constraint and either orphaned the existing test account
+or shipped an empty, unpopulated dashboard. Not referenced from `/login`, the landing page, or any
+nav — confirmed absent from both `a11y.mjs`'s 104-link dead-link crawl and a dedicated
+`verify-admin-login.mjs` link-reachability check.
+
+**Events tab was empty, not broken:** both `pokemon_events` rows were `winner_selected` verification
+debris (`VERIFY GIFT`/`VERIFY EMPTY`) and the only `is_action_event` auction was an `ended_unsold`
+test row (`Test Pack Battle`) backed by a listing with no `card_id`. Migrations `0017`–`0018` delete
+the debris and seed one real live Who's That Pokémon event and one real live Action Event ("Moonbreon
+Bidding War," repurposing the test auction's own listing/auction rows rather than creating new ones,
+avoiding the `auctions.listing_id` unique constraint). The real event was deliberately placed on
+PokeVault PH — the one shop `verify-events.mjs`'s own fixture never touches — after the first attempt
+collided with that script's `(shop_id, week_start)` uniqueness constraint on its first two
+alphabetical shops.
+
+**Card metadata + description template:** `0015_card_metadata.sql` adds `cards.generation` and
+`cards.pull_rate`, backfilled from the user-supplied 20-card reference table (Generation / Set /
+Rarity Tier / Pull Rate), matched by name against the existing catalog — 20 of 21 cards matched; the
+Rayquaza EX PSA slab, not in the table, stays null and Card Detail's existing
+`.filter(([, v]) => v)` on the spec list already omits it cleanly. These two fields are now also the
+template for what a seller's own listing description should cover going forward.
+
+**Price rebalancing + shop content:** `0016_price_rebalance_and_shops.sql` adjusts four existing
+listing prices (no listings added or removed) so all four `/browse` price bands return results —
+previously only 1 of 28 active listings fell under ₱1,000 and only 1 over ₱5,000. Also seeds the
+`shops.description` column (populated by Phase 2, never written to) with one real About blurb per
+shop, surfaced in a new "About [Shop Name]" block on Card Detail, alongside promoting the existing
+"View Shop" link into a "Visit Store" CTA.
+
+**Select cue:** `ListingCardTile.tsx` now calls `play("select")` on tap — the asset was processed and
+role-mapped in `lib/audio.ts` since Phase 0 but never wired to an actual event. Required converting
+the tile to a client component (`"use client"`); its only other imports (`next/image` via `CardArt`,
+`@/lib/utils`) already work inside a client boundary.
+
+Full regression: 21/21 journey (0 sub-44px targets), 19/19 controls, 16/16 events (including a
+same-session fixture collision found and fixed via `0018`), all four price bands populated, 17/17
+contrast pairs, 0 dead links across 104 crawled hrefs, `tsc --noEmit` and `eslint` both clean, 0
+console errors. Deployed and re-verified against production — admin login, price bands, 3D flicker,
+Events tab content, and Card Detail spec/store rendering all re-checked on
+`https://pokecard-ph.vercel.app` itself, not assumed from localhost.
+
+---
+
 ## Deferred — not part of this effort
 
 **Native mobile app (React Native).** A separate future project with its own session. The website's
