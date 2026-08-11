@@ -202,7 +202,7 @@ project reachable. A trivial page deploys to a Vercel preview URL.
 **Spec:** `MASTER_PROMPT.md` §3–4 · **Vault:** `PokeCard PH - Build Phases`
 
 ### Schema — the full base migration
-14 tables, **RLS enabled on every one**: `profiles`, `shops`, `cards`, `listings`, `orders`,
+13 tables, **RLS enabled on every one**: `profiles`, `shops`, `cards`, `listings`, `orders`,
 `order_items`, `trades`, `trade_items`, `conversations`, `messages`, `billing_tiers`,
 `vendor_gmv_history`, `vendor_monthly_billing`.
 
