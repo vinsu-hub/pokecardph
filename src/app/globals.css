@@ -108,6 +108,23 @@
   --duration-fast: 180ms;
   --duration-base: 250ms;
   --duration-slow: 400ms;
+
+  /* Sanctioned >400ms exceptions — all discrete-transition tokens above stay
+     under 400ms by rule. A continuous, non-discrete animation is a different
+     category and gets its own token rather than abusing --duration-slow:
+     the landing page's featured-card marquee (CardSurface's spring-damped
+     light tracking is the other exception, tuned per-frame rather than by a
+     fixed duration, so it has no token here). */
+  --duration-marquee: 28s;
+}
+
+/* Right-to-left, constant speed. `linear` is correct here specifically —
+   every --ease-* above exists for discrete state changes; a marquee eased
+   like one would visibly speed up and slow down on every loop, which reads
+   as broken rather than smooth. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
 /* Layout shell constants — referenced by AppShell and page gutters. */

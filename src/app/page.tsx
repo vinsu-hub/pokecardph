@@ -44,43 +44,65 @@ export default async function LandingPage({
   }
 
   const supabase = await createClient();
+  const FEATURED_COUNT = 5;
 
-  const [{ data: saleRows }, { data: auctionRows }] = await Promise.all([
+  const [{ data: saleRows }, { data: auctionRows }, { data: soldItems }] = await Promise.all([
     supabase
       .from("listings")
-      .select("id, price, photos, cards(name, set_name, rarity, image_url), shops(name, rating)")
+      .select("id, price, photos, created_at, card_id, cards(name, set_name, rarity, image_url), shops(name, rating)")
       .eq("status", "active")
-      .eq("sale_type", "fixed")
-      .order("created_at", { ascending: false })
-      .limit(10),
+      .eq("sale_type", "fixed"),
     supabase
       .from("auctions")
-      .select("id, current_bid, starting_bid, listings(description, item_category, cards(name, set_name, rarity, image_url), shops(name, rating))")
-      .in("status", ["scheduled", "live"])
-      .order("end_time", { ascending: true })
-      .limit(10),
+      .select("id, current_bid, starting_bid, bid_count, end_time, listings(description, item_category, cards(name, set_name, rarity, image_url), shops(name, rating))")
+      .in("status", ["scheduled", "live"]),
+    // Sales count per card, for ranking "best selling" — supabase-js has no
+    // GROUP BY, so this aggregates the (small) completed-order set in JS
+    // rather than adding a view for one landing-page ranking. order_items has
+    // both order_id and listing_id as direct FKs (not nested through each
+    // other), so orders and listings are two separate embeds here.
+    supabase
+      .from("order_items")
+      .select("quantity, listings(card_id), orders!inner(status)")
+      .eq("orders.status", "completed"),
   ]);
 
-  type SaleRow = { id: string; price: number; photos: unknown; cards: Card | null; shops: Shop | null };
+  type SaleRow = {
+    id: string; price: number; photos: unknown; created_at: string; card_id: string | null;
+    cards: Card | null; shops: Shop | null;
+  };
   type AuctionRow = {
-    id: string;
-    current_bid: number | null;
-    starting_bid: number;
+    id: string; current_bid: number | null; starting_bid: number; bid_count: number; end_time: string;
     listings: (Pick<Listing, "description" | "item_category"> & { cards: Card | null; shops: Shop | null }) | null;
   };
 
-  const forSale: PreviewCard[] = ((saleRows ?? []) as unknown as SaleRow[])
-    .filter((l) => l.cards && l.shops)
-    .map((l) => ({
-      id: l.id,
-      href: `/card/${l.id}`,
-      name: l.cards!.name,
-      subtitle: l.cards!.rarity ?? l.cards!.set_name,
-      price: Number(l.price),
-      sellerName: l.shops!.name,
-      sellerRating: Number(l.shops!.rating),
-      imageUrl: primaryPhoto(l.photos) ?? l.cards!.image_url,
-    }));
+  const salesByCard = new Map<string, number>();
+  for (const row of (soldItems ?? []) as unknown as { quantity: number; listings: { card_id: string | null } }[]) {
+    const cardId = row.listings?.card_id;
+    if (cardId) salesByCard.set(cardId, (salesByCard.get(cardId) ?? 0) + row.quantity);
+  }
+
+  const saleCandidates = ((saleRows ?? []) as unknown as SaleRow[]).filter((l) => l.cards && l.shops);
+
+  /** Best-selling first, ties broken by newest, so the ranking is never
+   *  arbitrary even before real sales volume exists — it degrades gracefully
+   *  to "newest" rather than to an undefined sort order. */
+  const bestSelling = [...saleCandidates].sort((a, b) => {
+    const sold = (salesByCard.get(b.card_id ?? "") ?? 0) - (salesByCard.get(a.card_id ?? "") ?? 0);
+    if (sold !== 0) return sold;
+    return +new Date(b.created_at) - +new Date(a.created_at);
+  });
+
+  const forSale: PreviewCard[] = bestSelling.slice(0, FEATURED_COUNT).map((l) => ({
+    id: l.id,
+    href: `/card/${l.id}`,
+    name: l.cards!.name,
+    subtitle: l.cards!.rarity ?? l.cards!.set_name,
+    price: Number(l.price),
+    sellerName: l.shops!.name,
+    sellerRating: Number(l.shops!.rating),
+    imageUrl: primaryPhoto(l.photos) ?? l.cards!.image_url,
+  }));
 
   // Every active listing already supports "Trade for This Card" on Card
   // Detail — there's no separate for-trade inventory, so this reuses the same
@@ -88,18 +110,25 @@ export default async function LandingPage({
   // exist as its own concept.
   const forTrade = forSale;
 
-  const auctions: PreviewCard[] = ((auctionRows ?? []) as unknown as AuctionRow[])
-    .filter((a) => a.listings?.cards && a.listings?.shops)
-    .map((a) => ({
-      id: a.id,
-      href: `/auctions/${a.id}`,
-      name: a.listings!.cards!.name,
-      subtitle: a.listings!.cards!.rarity ?? a.listings!.cards!.set_name,
-      price: Number(a.current_bid ?? a.starting_bid),
-      sellerName: a.listings!.shops!.name,
-      sellerRating: Number(a.listings!.shops!.rating),
-      imageUrl: a.listings!.cards!.image_url,
-    }));
+  const auctionCandidates = ((auctionRows ?? []) as unknown as AuctionRow[]).filter(
+    (a) => a.listings?.cards && a.listings?.shops,
+  );
+  const mostBid = [...auctionCandidates].sort((a, b) => {
+    const bids = b.bid_count - a.bid_count;
+    if (bids !== 0) return bids;
+    return +new Date(a.end_time) - +new Date(b.end_time); // soonest-ending
+  });
+
+  const auctions: PreviewCard[] = mostBid.slice(0, FEATURED_COUNT).map((a) => ({
+    id: a.id,
+    href: `/auctions/${a.id}`,
+    name: a.listings!.cards!.name,
+    subtitle: a.listings!.cards!.rarity ?? a.listings!.cards!.set_name,
+    price: Number(a.current_bid ?? a.starting_bid),
+    sellerName: a.listings!.shops!.name,
+    sellerRating: Number(a.listings!.shops!.rating),
+    imageUrl: a.listings!.cards!.image_url,
+  }));
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -172,6 +201,17 @@ export default async function LandingPage({
             priority
             sizes="50vw"
             className="object-cover"
+          />
+          {/* Reference: MAIN LANDING PAGE.png — the photo isn't a hard-edged
+              panel, a white gradient bleeds from the left panel into it. This
+              overlay recreates that seam rather than leaving the vertical
+              line a plain two-column split produces. */}
+          <div
+            aria-hidden
+            className="absolute inset-y-0 left-0 w-1/3"
+            style={{
+              background: "linear-gradient(to right, var(--color-bg) 0%, color-mix(in srgb, var(--color-bg) 40%, transparent) 60%, transparent 100%)",
+            }}
           />
         </div>
       </main>
