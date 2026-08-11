@@ -124,6 +124,8 @@ Where reference images disagree, these win:
 
 ## Phase 0 — Pre-flight
 
+**Status:** ✅ Built & verified (Gate 0 closed).
+
 Nothing here is app code. All of it blocks Phase 1.
 
 ### 0.1 Project setup
@@ -201,6 +203,9 @@ project reachable. A trivial page deploys to a Vercel preview URL.
 
 **Spec:** `MASTER_PROMPT.md` §3–4 · **Vault:** `PokeCard PH - Build Phases`
 
+**Status:** ✅ Built — Home/Browse, Card Detail, Cart, Checkout, Order Tracking all live against real
+Supabase data. Card Detail (2D) has no reference image; derived from `MASTER_PROMPT.md` §4 (1.2).
+
 ### Schema — the full base migration
 13 tables, **RLS enabled on every one**: `profiles`, `shops`, `cards`, `listings`, `orders`,
 `order_items`, `trades`, `trade_items`, `conversations`, `messages`, `billing_tiers`,
@@ -241,6 +246,10 @@ action reachable, filters open as a sheet.
 ## Phase 1b — Auth & Google Sign-In
 
 **Spec:** `AUTH_GOOGLE_SIGNIN.md` · **Vault:** `PokeCard PH - Auth`
+
+**Status:** ✅ Built — email magic-link is the real, working path. Google OAuth deferred by explicit
+request; the button is rendered disabled with a "coming soon" note, not omitted, so turning it on
+later needs only the Google Cloud Console step + a provider toggle. No schema or policy change.
 
 Not a numbered phase — a **gate before Phase 2**, because every later phase assumes an
 authenticated user. It can land after Phase 1 without a rewrite: RLS already keys off `auth.uid()`,
@@ -288,6 +297,9 @@ real `supabase.auth.getUser()` calls — and no RLS policy was edited.**
 
 **Spec:** `PHASE2_VENDOR.md`
 
+**Status:** ✅ Built — onboarding, dashboard, the 4-step Add Listing wizard, All Listings, Vendor
+Orders with the slide-over.
+
 ### Schema
 No new tables. Columns only: `shops.banner_url`, `description`, `positive_feedback_pct`,
 `avg_response_time`; `listings.compare_price`, `population`.
@@ -314,6 +326,8 @@ side. Vendor sees only their own shop's orders.
 ## Phase 3 — Trade engine
 
 **Spec:** `PHASE3_TRADE_ENGINE.md` · **Vault:** `PokeCard PH - Trade Engine`
+
+**Status:** ✅ Built (Gate 3 closed).
 
 ### Schema
 `trade_cards` (buyer's personal inventory — **distinct from shop listings**), `trade_activity`,
@@ -348,6 +362,10 @@ Full cycle: buyer builds an offer → vendor accepts → both confirm meetup →
 ## Phase 4 — Auctions & bidding
 
 **Spec:** `PHASE4_AUCTIONS.md` · **Vault:** `PokeCard PH - Auctions`
+
+**Status:** ✅ Built (Gate 4 closed, 18/18 attack-shaped RLS assertions). **Outstanding:**
+`/vendor/auctions/create` is still a standalone form rather than the Add Listing wizard's Sale Type
+branch — deferred originally only because the wizard didn't exist yet when this phase was built.
 
 First hard **Supabase Realtime** dependency. No reference images exist — build to the established
 visual language.
@@ -394,6 +412,9 @@ specifically to exercise anti-snipe.
 
 **Spec:** `PHASE5_MONETIZATION.md` · **Vault:** `PokeCard PH - Monetization`
 
+**Status:** ✅ Built — Xendit not provisioned, invoicing stops at `pending`/no payable link and the UI
+says so. All three crons work when called directly; none are registered (no `vercel.json` yet).
+
 ### Schema
 `billing_config`, `vendor_payouts`; `shops` gains `trial_ends_at`, `trial_gmv_cap`,
 `trial_gmv_used`, `onboarded_at`, `billing_status`.
@@ -434,6 +455,9 @@ registered, Xendit webhook configured.
 ## Phase 6 — "Who's That Pokémon?" events
 
 **Spec:** `PHASE6_EVENTS.md` · **Vault:** `PokeCard PH - Events`
+
+**Status:** ✅ Built (16/16 `verify-events.mjs`). **Outstanding:** gift-claiming from a won event
+doesn't route anywhere yet — spec says reuse the Phase 1 order flow at ₱0.
 
 ### Schema
 `pokemon_events`, `event_guesses` (with `unique (event_id, user_id)` — one guess, no retries).
@@ -484,6 +508,10 @@ close → winner cycle without waiting a week. Cron registered at every 5 minute
 
 ## Phase 7 — Scan & 3D
 
+**Status:** ✅ Built, ⚠️ **diverges from its own spec** — built as a rotating CSS card with fixed
+lighting presets because no spec existed yet; `PHASE7_SCAN_3D.md` arrived afterward and describes
+photometric stereo instead. See **Phase 7-rev** below.
+
 **No standalone spec** — the only phase that never had one. Detail lives in `MASTER_PROMPT.md` §2.4
 and §7.
 
@@ -502,6 +530,112 @@ None.
 
 ---
 
+## Phase 7-rev — Scan & 3D rework
+
+**Spec:** `CONTEXT/POKECARD_PH_PHASE7_SCAN_3D.md` (arrived 2026-08-11, after Phase 7 was built)
+**Vault:** `PokeCard PH - Scan and 3D`
+
+**Status:** 📋 Specced only — zero code written.
+
+> ⚠️ **Phase 7 as built does not match its spec.** It was built from the two reference images alone
+> because no spec existed — it was the only phase that never had one. The spec describes
+> **photometric stereo**: six captures under different light angles produce a normal map, and the
+> buyer's viewer is a **flat plane with a moving virtual light** — like tilting a real card under a
+> lamp. What exists is a **rotating card** with fixed lighting presets. Competent object viewer;
+> not the feature.
+
+Rework: `scan_sessions` + four `listings` columns · real `getUserMedia` capture to Storage ·
+`/api/scan/[sessionId]/process` running least-squares photometric stereo **out of the request
+cycle** (light directions are known constants, fixed by the capture order) · Three.js normal-mapped
+plane with a spring-damped cursor light, lazy-loaded and gated on `scan_status = 'ready'` · moved
+onto Card Detail behind the existing 2D/3D toggle · scan-ready badges and trust messaging.
+
+**Failure must never block publishing** — `scan_status = 'failed'` and the listing still ships on
+its flat photos. And still no auto-grading model: the vendor's stated grade stays authoritative.
+
+The capture wizard shell is largely correct and can be kept; it needs a camera behind it and a
+processor after it.
+
+---
+
+## Phase 8 — Messaging & Notifications
+
+**Spec:** `CONTEXT/POKECARD_PH_PHASE8_MESSAGING_NOTIFICATIONS.md` · **Vault:** `PokeCard PH - Messaging and Notifications`
+
+**Status:** 📋 Specced only — zero code written. Messaging is the last fully-unbuilt surface; four
+"Message X" buttons across the app are already wired up in markup and go nowhere.
+
+The last unbuilt surface. Every phase has shipped a Message button with nothing behind it and said
+"notify the user" without a notifications table.
+
+**`conversations` and `messages` already exist** as Phase 1 shells — this ALTERs them, adding
+`context_type`/`context_id`, unread counters and `last_message_at`. Same trap Phase 3 hit with
+`trades`. The `unique (buyer, shop, context_type, context_id)` constraint is load-bearing: messaging
+the same shop about the same order twice must land in one thread.
+
+Realtime is **not optional**. Notifications INSERT is **server-side only**. Triggers fire from
+inside existing Server Actions and crons, not a new poller.
+
+Motion reuses existing recipes — bid-history row entrance for new messages, cart-badge pop for the
+bell, avatar-dropdown mechanic for the panel. The spec says explicitly: do not create a third
+variant of "dropdown opens".
+
+---
+
+## Phase 9 — Search, Legal, Empty & Loading States
+
+**Spec:** `CONTEXT/POKECARD_PH_PHASE9_SEARCH_LEGAL_EMPTY_STATES.md` · **Vault:** `PokeCard PH - Search and Polish`
+
+**Status:** 📋 Specced only — zero code written.
+
+Header **autocomplete** (`pg_trgm`, 250ms debounce, Cards/Shops grouped) — `/search` exists but the
+header bar has none. Vendor-side search is a *different* search over their own orders and listings.
+
+`/terms`, `/privacy`, `/vendor-agreement` — all currently 404 from the login footer and the new
+global footer. Plus a 404 page.
+
+Empty states: most already exist; the job is unifying them onto one pattern. **Loading states are
+the real work** — the build has `force-dynamic` throughout and **no `loading.tsx` anywhere**, so
+every route flashes blank on navigation.
+
+---
+
+## Seed — one coherent dataset
+
+**Spec:** `CONTEXT/POKECARD_PH_SEED_DATA_PLAN.md` · **Vault:** `PokeCard PH - Seed Data Plan`
+
+**Status:** 📋 Specced only — the live database is still the 7 fragmented per-phase seeds plus
+accumulated test-harness debris (journey-run orders, suite-closed auctions, `VERIFY GIFT` events).
+
+Seven per-phase seeds have produced disconnected fragments, now compounded by test-harness debris
+(journey-run orders, suite-closed auctions, `VERIFY GIFT` events). Replace with one script against
+a fresh database: 4 named people, ~25 cards, ~15 listings, orders across every status, trades,
+auctions, an event, conversations, and two months of GMV.
+
+Reconcile the cast: the current seed has `buyer@pokecard.test` and three shops; the plan names two
+buyers and two vendors.
+
+---
+
+## Brand — red/black/white retrofit
+
+**Spec:** `CONTEXT/POKECARD_PH_BRAND_ALIGNMENT.md` · **Vault:** `PokeCard PH - Design System`
+
+**Status:** ✅ Applied — indigo → red `#E4002B`/ink/white palette across Phases 0–5, grade badges
+moved to neutral fill, global footer, real logo artwork (see below). `POKECARD_PH_DESIGN_SYSTEM.md`
+§2 updated in place per the brand doc's own closing instruction, rather than superseded by a second
+document.
+
+**Real logo assets landed 2026-08-11**, after the initial retrofit shipped with a hand-built SVG
+reconstruction (the brand doc referenced image assets that hadn't been supplied yet). Six files —
+two wordmark lockups (light/dark-mode) and four mark-only variants — are now in `public/brand/` and
+`Logo.tsx` renders them directly. The reconstruction's geometry was already close; this is exactness,
+not a correction. Also fixed in the same pass: `viewport.themeColor` in `layout.tsx` was still the
+old `#4f46e5` indigo — a browser-chrome surface the original CSS-token sweep didn't reach because
+it isn't a CSS custom property.
+
+---
+
 ## Deferred — not part of this effort
 
 **Native mobile app (React Native).** A separate future project with its own session. The website's
@@ -511,6 +645,81 @@ Ship the website first.
 
 Everything above targets one deliverable: **a full working demo of the website, deployed, usable on
 desktop and phone browsers.**
+
+---
+
+## Outstanding work register
+
+Consolidated 2026-08-11 from the session handoff's "Still open" list, the Fidelity Review's "Not
+run" note, and this document's own Open decisions footer — those sources had drifted apart, and two
+items on the handoff's list were already stale (see "Removed as stale" below). This is now the one
+place to check what's left; the per-phase Status lines above point back here rather than repeating
+it.
+
+### By phase
+
+- **Phase 4** — `/vendor/auctions/create` is a standalone form; fold it into the Add Listing wizard
+  as its Sale Type branch. Deferred originally only because the wizard didn't exist yet when Auctions
+  was built — the shape was always intended to converge.
+- **Phase 6** — gift-claiming from a won event doesn't route anywhere. Spec says reuse the Phase 1
+  order flow at ₱0; not yet wired.
+- **Phase 7 → 7-rev** — the full rework: `scan_sessions` schema, real `getUserMedia` capture to
+  Storage, `/api/scan/[sessionId]/process` running photometric stereo out of the request cycle, and
+  the Three.js normal-mapped plane on Card Detail. Full detail in the Phase 7-rev section above and
+  [[PokeCard PH - Scan and 3D]] — the capture wizard shell is largely correct and can be kept.
+- **Phase 8** — build from scratch: ALTER `conversations`/`messages` (same trap Phase 3 hit with
+  `trades`), a notifications table, Realtime wiring, and the four dead "Message X" buttons already
+  sitting in the markup.
+- **Phase 9** — build from scratch: header autocomplete (`/search` exists, the header bar doesn't),
+  `/terms` `/privacy` `/vendor-agreement` (all currently 404), a 404 page, and `loading.tsx` on every
+  route — none exist today, so every navigation flashes blank.
+- **Seed** — consolidate the 7 fragmented per-phase seeds plus accumulated test-harness debris into
+  one script; reconcile the cast (current seed: `buyer@pokecard.test` + 3 shops; plan: 2 named buyers
+  + 2 named vendors with specific stats).
+- **Unspecced mockup features** — `ITEM VIEW WITH 3D MODEL VIEW.png` shows AR View, a Market Price
+  comparison widget, Pop. Higher, and Add to Watchlist. None exist in any spec or schema. Still
+  undecided: spec each one or drop it from the reference image's authority. The Market Price widget
+  matters most — it implies a price-history data source nobody has scoped.
+- **Accessibility** — keyboard traversal and focus-trap on `SlideOver` have never been walked.
+  `:focus-visible` styling is implemented globally; tab order isn't verified.
+
+### Cross-cutting — not owned by any single phase
+
+- **Deployment.** Every phase's stated gate is "deploys to the same Vercel project before the next
+  phase begins." **None of the 8 built phases have ever been deployed** — everything runs on
+  `localhost:3210`. This is the largest gap between the document's stated process and what actually
+  happened. The Vercel CLI is authed (`vinsu-hub`, org `vince-tamis`); env vars need mirroring into
+  the project when it's created.
+- **Cron registration.** The auction closer, 3 billing crons, and event resolver all work correctly
+  when called directly; none are registered anywhere, because there's no `vercel.json` yet — that
+  file is created at first deploy, along with setting `CRON_SECRET`.
+- **GitHub remote.** `git remote -v` returns nothing — no remote is configured at all, on top of
+  `gh auth`'s keyring token being invalid (`gh auth login -h github.com` fixes the latter). 21+
+  commits are local-only on `main`.
+- **Google OAuth.** Deferred by explicit request. Needs the Google Cloud Console step (consent
+  screen + redirect URIs registered separately for localhost, preview, and production — registering
+  only production is the classic failure) before the already-built, already-disabled button can be
+  turned on. No schema or policy change needed on this end; RLS already keys off `auth.uid()`
+  regardless of how it's populated.
+- **Xendit.** Not provisioned (`XENDIT_SECRET_KEY` empty). Checkout and billing both stop at
+  `pending`/no payable link, and the UI says so rather than implying a working payment path.
+
+### Open product decisions
+
+Carried from this document's original footer — genuinely still open, not resolved by this pass:
+**Buyer Pro subscription** timing (Phase 5 explicitly excludes it, launch timing undecided);
+**minimum shop rating threshold** and its consequence (warning / suspension / reduced visibility);
+**DTI/SEC registration** — required at onboarding, or only past a GMV threshold; **audio licensing**
+for `pokemon-evolve.mp3` and `whos-that-pokemon.mp3`, both recognisably first-party Pokémon audio and
+a real trademark question on a platform charging vendors ₱275–17,500/month.
+
+### Removed as stale
+
+Two items on the handoff note's "Still open" list no longer apply and are dropped here rather than
+carried forward again: `NEXT_PUBLIC_SITE_URL` was flagged as still pointing at port 3000 — it's
+already `http://localhost:3210` in `.env.local`, fixed back in the Phase 1b gate. `src/app/page.tsx`
+was flagged as the throwaway Phase 0 gate page — it was replaced by the real Home/Browse in Phase 1
+and has been for several gates.
 
 ---
 
@@ -538,11 +747,10 @@ desktop and phone browsers.**
 - **Business model duplication.** `POKECARD_PH_BUSINESS_MODEL.md` is canonical;
   `PokeCard_PH_Business_Model.docx` is the exported artifact.
 
-### Open decisions
-- **Buyer Pro subscription** — launch with vendor billing or defer? Phase 5 explicitly excludes it.
-- **Minimum shop rating threshold** and its consequence (warning / suspension / reduced visibility).
-- **DTI/SEC registration** — required at onboarding, or only past a GMV threshold?
-- **Audio licensing** — replace the Pokémon-derived assets before launch, or accept the exposure?
+### Decided
 - ~~Flat 60-day trial vs. GMV-cap hybrid~~ — **resolved by implementation.** Phase 5 ships both
   (`trial_ends_at` *and* `trial_gmv_cap` with early termination), so the hybrid is the de-facto
   answer unless deliberately overridden.
+
+Still-open product decisions moved to **Outstanding work register** above, so they live in one place
+rather than two.
