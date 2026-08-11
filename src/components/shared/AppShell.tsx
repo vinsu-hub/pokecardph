@@ -10,6 +10,7 @@ import {
   Package,
   MessageSquare,
   ShoppingCart,
+  Gavel,
   Menu,
   X,
   Store,
@@ -39,14 +40,14 @@ type NavItem = {
 const NAV: NavItem[] = [
   { href: "/", label: "Home", icon: Home },
   { href: "/search", label: "Search", icon: Search },
-  {
-    href: "/trade",
-    label: "Trade",
-    icon: ArrowLeftRight,
-    disabled: true,
-    phase: "Trading arrives in a later release",
-  },
+  { href: "/trade", label: "Trade", icon: ArrowLeftRight },
+  { href: "/auctions", label: "Auctions", icon: Gavel },
   { href: "/orders", label: "Orders", icon: Package },
+];
+
+/** Beyond the 5-item tab-bar cap — desktop nav and the mobile overflow menu
+ *  only. The cap is a hard UX rule, so this is where the 6th item goes. */
+const OVERFLOW: NavItem[] = [
   {
     href: "/messages",
     label: "Messages",
@@ -86,7 +87,7 @@ export function AppShell({
             {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
 
-          <Link href="/" className="flex h-11 shrink-0 items-center gap-2">
+          <Link href="/" className="flex h-11 min-h-11 shrink-0 items-center gap-2 py-1">
             <span className="grid size-8 place-items-center rounded-full bg-primary text-caption font-bold text-white">
               PC
             </span>
@@ -108,7 +109,7 @@ export function AppShell({
           </form>
 
           <nav className="ml-auto hidden items-center gap-1 lg:flex">
-            {NAV.filter((n) => n.href !== "/search").map((item) => (
+            {[...NAV.filter((n) => n.href !== "/search"), ...OVERFLOW].map((item) => (
               <NavLink key={item.href} item={item} active={isActive(item.href)} />
             ))}
             <Link
@@ -141,6 +142,12 @@ export function AppShell({
         {/* Mobile overflow menu */}
         {menuOpen && (
           <div className="border-t border-border px-(--gutter) py-2 lg:hidden">
+            {OVERFLOW.map((item) => (
+              <span key={item.href} title={item.phase}
+                className="flex h-12 items-center gap-2 text-body font-medium text-text-muted opacity-50">
+                <MessageSquare className="size-4" /> {item.label}
+              </span>
+            ))}
             <Link
               href="/vendor/dashboard"
               onClick={() => setMenuOpen(false)}

@@ -151,7 +151,7 @@ export default async function OrderDetailPage({
                 <li key={it.id} className="flex items-center justify-between gap-3 border-b border-border pb-3 last:border-0">
                   <div className="min-w-0">
                     {it.listings ? (
-                      <Link href={`/card/${it.listings.id}`} className="truncate text-body font-medium hover:text-primary">
+                      <Link href={`/card/${it.listings.id}`} className="flex min-h-11 items-center truncate text-body font-medium hover:text-primary">
                         {it.listings.cards?.name ?? "Auction item"}
                       </Link>
                     ) : (
