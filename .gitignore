@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# PokeCard PH — local working assets, not source
+/CONTEXT/
+/REFERENCE IMAGES/
+/audio files/
+/supabase/.temp/
