@@ -720,15 +720,16 @@ it.
   had never existed.
   **Still open:** the deployed origin must be added to Supabase's redirect allowlist
   (`https://pokecard-ph.vercel.app/**`) or production magic-link sign-in lands on the wrong host.
-- **Cron registration** — partially done. **Vercel Hobby allows daily granularity only**, so the
-  five jobs split by what each one is: the three billing jobs collapse into one daily
-  `/api/cron/daily` (verified in production — 401 unauthenticated, real GMV aggregated with the
-  secret), while the auction closer and event resolver move to **pg_cron inside Postgres**, calling
+- ~~**Cron registration**~~ — **done 2026-08-12.** Vercel Hobby allows daily granularity only, so the
+  five jobs split: the three billing jobs collapse into one daily `/api/cron/daily`, while the
+  auction closer and event resolver run on **pg_cron inside Postgres**, calling
   `close_due_auctions()` and `resolve_events()` directly since both are already SECURITY DEFINER
-  functions. `0012_pg_cron.sql` is written but **not yet applied** — needs `SUPABASE_DB_PASSWORD`.
-- **Storage** — was entirely unused through Phase 7 (no bucket existed; every image is a gradient
-  placeholder). `0011_storage.sql` defines five buckets with path-convention ownership policies, and
-  `ImageUpload.tsx` is wired into the Add Listing wizard. **Not yet applied** — same blocker.
+  functions. **Proved running, not just scheduled** — `cron.job_run_details` showed real executions
+  within 90 seconds of the migration landing.
+- ~~**Storage**~~ — **done 2026-08-12.** `0011_storage.sql` applied: five buckets with
+  path-convention ownership policies. **Proved end-to-end as a real signed-in vendor**: upload to
+  own shop's folder succeeds, upload to another shop's folder is rejected, the result is publicly
+  readable. `ImageUpload.tsx` is wired into the Add Listing wizard.
 - **GitHub remote.** `git remote -v` returns nothing — no remote is configured at all, on top of
   `gh auth`'s keyring token being invalid (`gh auth login -h github.com` fixes the latter). 21+
   commits are local-only on `main`.
