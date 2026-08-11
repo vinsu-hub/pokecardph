@@ -1,26 +1,134 @@
 @import "tailwindcss";
 
+/* ============================================================================
+   PokeCard PH — Design Tokens
+   Source of truth: CONTEXT/POKECARD_PH_DESIGN_SYSTEM.md
+   Do not introduce colors, sizes, radii, easings or durations outside this file.
+   Light palette only — the design system defines no dark mode, and every
+   reference image is light. Adding one is a product decision, not a CSS one.
+   ========================================================================== */
+
+@theme {
+  /* --- Brand ------------------------------------------------------------ */
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-primary-subtle: #eef2ff;
+
+  /* --- Surfaces & text -------------------------------------------------- */
+  --color-bg: #ffffff;
+  --color-bg-muted: #f9fafb;
+  --color-border: #e5e7eb;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+  --color-text-muted: #9ca3af;
+
+  /* --- Status: text + background pairs ---------------------------------- */
+  /* Used consistently across orders, trades, auctions and billing. */
+  --color-success: #059669;
+  --color-success-bg: #d1fae5;
+  --color-info: #2563eb;
+  --color-info-bg: #dbeafe;
+  --color-attention: #d97706;
+  --color-attention-bg: #fef3c7;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fee2e2;
+  --color-paid: #7c3aed;
+  --color-paid-bg: #ede9fe;
+  --color-neutral: #0d9488;
+  --color-neutral-bg: #ccfbf1;
+
+  /* --- Type ------------------------------------------------------------- */
+  /* One typeface. Weight does the differentiation work — no serif, no display. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --text-display: 2rem; /* 32px — page titles */
+  --text-display--line-height: 1.2;
+  --text-h2: 1.5rem; /* 24px — section headers */
+  --text-h2--line-height: 1.2;
+  --text-h3: 1.125rem; /* 18px — card titles */
+  --text-h3--line-height: 1.2;
+  --text-body: 0.875rem; /* 14px — default UI text */
+  --text-body--line-height: 1.5;
+  --text-caption: 0.75rem; /* 12px — timestamps, badges */
+  --text-caption--line-height: 1.5;
+
+  /* --- Spacing: 4px base, no arbitrary values --------------------------- */
+  --spacing: 4px;
+
+  /* --- Radii ------------------------------------------------------------ */
+  --radius-md: 8px; /* buttons, inputs, badges */
+  --radius-lg: 12px; /* cards */
+
+  /* --- Elevation: subtle at rest, never a heavy drop -------------------- */
+  --shadow-rest: 0 1px 2px rgb(0 0 0 / 0.05);
+  --shadow-elevated: 0 4px 12px rgb(0 0 0 / 0.08);
+
+  /* --- Motion ----------------------------------------------------------- */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-soft: cubic-bezier(0.7, 0, 0.84, 0);
+
+  --duration-instant: 100ms;
+  --duration-fast: 180ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
+}
+
+/* Layout shell constants — referenced by AppShell and page gutters. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --page-max: 1280px;
+  --gutter: 32px;
+  --card-pad: 24px;
+  --tabbar-h: 56px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@media (width < 1024px) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --gutter: 16px;
+    --card-pad: 16px;
   }
 }
 
+/* ============================================================================
+   Base
+   ========================================================================== */
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg-muted);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.5;
+  /* Bottom tab bar occupies space under 1024px; keep content clear of it. */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Numerics that must not reflow as digits change — prices, countdowns,
+   stat cards. Referenced by the motion spec's tabular-number requirement. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus is always visible and always the brand color. Never remove it —
+   priority-1 accessibility rule. */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ============================================================================
+   Reduced motion — not optional.
+   Every animation degrades to a near-instant opacity change. This also
+   suppresses non-essential audio via a matchMedia check in src/lib/audio.ts.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
