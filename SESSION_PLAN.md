@@ -584,6 +584,30 @@ photo (split from the supplied composite scan) instead of a placeholder.
 `/api/scan/[sessionId]/process` running actual photometric stereo out of the request cycle. Those
 remain exactly as specced above.
 
+### The mandatory two-tier model — 2026-08-12
+A pasted conversation asked for scanning to become a real requirement to publish, resolved into two
+tiers rather than one hard gate (which would have made the still-unbuilt capture wizard a
+prerequisite for desktop-only vendors): **Flat Scan** — a listing's Front photo *is* its flat scan,
+satisfied automatically, no separate upload — and **Full Condition Scan** — the capture pipeline
+above, unchanged in scope, now framed as the earned upgrade.
+
+`0013_scan_tier.sql` adds `listings.scan_tier` (`'flat'|'full'|null`) — deliberately not
+`scan_status`, since that column belongs to Full tier's still-unbuilt async lifecycle and shouldn't
+be half-modeled. Publishing is gated server-side on a Front photo existing (never trusted
+client-only); `CardSurface.tsx` gained a thin backing box so a Flat Scan reads as an object, not a
+photo pasted onto nothing; `Inspector3D` shows a Flat Scan warning or Platform Verified badge from
+the real `scan_tier` column, kept independent of the unrelated test-artwork-derived normal-map
+disclaimer above. `ScanStudio`'s "Skip Scan & Continue" is retired — nothing is skippable now, since
+Flat Scan is already satisfied by the time a vendor reaches that page.
+
+Caught mid-build: publishing a listing with a real vendor-uploaded photo crashed Card Detail —
+`next.config.ts` never allowlisted the Supabase Storage hostname for `next/image`, since every image
+so far had been same-origin. Fixed by deriving `remotePatterns` from `NEXT_PUBLIC_SUPABASE_URL`.
+
+Verified end-to-end with real wait conditions, not fixed timeouts: warning/disabled-button before a
+photo, both clear after, `scan_tier` recorded correctly, badge matches. 21/21 journey, 19/19
+controls, 0 console errors. Deployed and confirmed in production.
+
 ---
 
 ## Phase 8 — Messaging & Notifications
@@ -661,6 +685,46 @@ two wordmark lockups (light/dark-mode) and four mark-only variants — are now i
 not a correction. Also fixed in the same pass: `viewport.themeColor` in `layout.tsx` was still the
 old `#4f46e5` indigo — a browser-chrome surface the original CSS-token sweep didn't reach because
 it isn't a CSS custom property.
+
+---
+
+## Phase 10 — Landing page, sign-up restyle, Action Events
+
+**Spec:** five new `REFERENCE IMAGES/` files (`MAIN LANDING PAGE.png`, `LANDING PAGE IMAGE
+BACKGROUND.png`, `SIGN UP PAGE.png`, `ACTION OR BIDDING LAYOUT.png`, `WHO'S THAT POKEMON.png`) plus
+`fonts/pokemon/`. **Status:** ✅ Built and deployed 2026-08-12.
+
+Three of the five mockups directly conflicted with decisions already built, tested, and deployed —
+resolved by asking rather than silently following the newest picture, all three resolved toward the
+existing behavior: **Home/Browse moved to `/browse`**, with the marketing landing page taking `/`
+for signed-out visitors only (a signed-in session redirects, query string preserved) — the "no
+browse wall" property from `AUTH_GOOGLE_SIGNIN.md` survives, just one click further in.
+**Sign-up stays magic-link only** — the mockup's password fields were never built; only the
+split-panel layout and copy were adopted. **Bidder identity stays masked** in the new event-bidding
+type, matching existing Auctions, not the mockup's real usernames.
+
+**Action Events** reuse the Phase 4 auction engine entirely — `0014_action_events.sql` adds nullable
+event-framing columns to `auctions` (`is_action_event`, `event_title`/`subtitle`, `max_participants`,
+`prize_description`) and `join_action_event()`, following the same locked-row SECURITY DEFINER
+pattern as `place_bid`. Participants reuse `auction_watchers` rather than a new table. `/auctions/[id]`
+gains a conditional hero-banner branch around the existing `BiddingPanel`, not a forked page. New
+`/events/action` mirrors Auctions Browse filtered to the flag. `/events` restructures with All
+Events/My Entries tabs and an Action Events row, including inert Tournament/League teasers — no
+mechanic is specified for either anywhere, so they're stubbed with a reason, same treatment as AR
+View and the Market Price widget, never built as real features.
+
+The Pokémon TCG display font (`Pokemon Solid.ttf`/`Pokemon Hollow.ttf` — real trademark exposure,
+same category as the two Pokémon-derived SFX assets) is wired via `next/font/local` and applied to
+exactly one place: the Events hub's "Who's That Pokémon?" heading.
+
+One real bug caught by the existing suites, not assumed working: the signed-in redirect from `/` to
+`/browse` was dropping query strings entirely — `controls.mjs`'s filter assertions caught it
+immediately, since every filtered total came back identical to the unfiltered one.
+
+Full regression: 21/21 journey, 19/19 controls, 16/16 events, 25/25 RLS/mechanics, 14/14 contrast
+pairs checked, 0 sub-44px targets across every new route (two real ones found and fixed — a
+grid/flexbox intrinsic-width leak and undersized breadcrumb links), 0 console errors. Deployed and
+re-verified against production, not just localhost.
 
 ---
 
