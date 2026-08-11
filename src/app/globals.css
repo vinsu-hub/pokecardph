@@ -19,22 +19,31 @@
   --color-bg-muted: #f9fafb;
   --color-border: #e5e7eb;
   --color-text-primary: #111827;
-  --color-text-secondary: #6b7280;
-  --color-text-muted: #9ca3af;
+  /* Ramp shifted one step: muted was #9CA3AF at 2.54:1 on white, unreadable
+     for placeholders and disabled labels. Shifting the whole ramp rather than
+     collapsing muted into secondary keeps three distinct levels and clears AA
+     at each (7.56:1 / 4.83:1 on white). */
+  --color-text-secondary: #4B5563;
+  --color-text-muted: #6B7280;
 
   /* --- Status: text + background pairs ---------------------------------- */
-  /* Used consistently across orders, trades, auctions and billing. */
-  --color-success: #059669;
+  /* Used consistently across orders, trades, auctions and billing.
+     Foregrounds are the Tailwind 700 step, not 600. The design system's pill
+     rule already specifies `text-{color}-700`; its token table listed the 600
+     values, and at 12px those failed WCAG AA against their own backgrounds
+     (attention was 2.86:1). Measured ratios now: success 4.84, info 5.49,
+     attention 4.51, danger 5.30, paid 5.98, neutral 4.86 — all >= 4.5:1. */
+  --color-success: #047857;
   --color-success-bg: #d1fae5;
-  --color-info: #2563eb;
+  --color-info: #1D4ED8;
   --color-info-bg: #dbeafe;
-  --color-attention: #d97706;
+  --color-attention: #B45309;
   --color-attention-bg: #fef3c7;
-  --color-danger: #dc2626;
+  --color-danger: #B91C1C;
   --color-danger-bg: #fee2e2;
-  --color-paid: #7c3aed;
+  --color-paid: #6D28D9;
   --color-paid-bg: #ede9fe;
-  --color-neutral: #0d9488;
+  --color-neutral: #0F766E;
   --color-neutral-bg: #ccfbf1;
 
   /* --- Type ------------------------------------------------------------- */

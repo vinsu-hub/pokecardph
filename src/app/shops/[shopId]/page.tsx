@@ -5,7 +5,6 @@ import { getSessionUser, shellUser } from "@/lib/auth";
 import { AppShell } from "@/components/shared/AppShell";
 import { ListingCardTile } from "@/components/buyer/ListingCardTile";
 import { getCartCount } from "@/lib/cart";
-import { php } from "@/lib/utils";
 import type { ListingCard } from "@/lib/supabase/types";
 
 /**

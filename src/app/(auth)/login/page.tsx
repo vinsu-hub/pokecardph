@@ -50,7 +50,7 @@ function LoginForm() {
   return (
     <main className="grid min-h-svh place-items-center bg-bg-muted px-4 py-10">
       <div className="w-full max-w-[400px]">
-        <Link href="/" className="mb-6 flex items-center justify-center gap-2">
+        <Link href="/" className="mb-6 flex h-11 items-center justify-center gap-2">
           <span className="grid size-8 place-items-center rounded-full bg-primary text-caption font-bold text-white">
             PC
           </span>
