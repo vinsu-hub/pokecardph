@@ -44,5 +44,6 @@ next-env.d.ts
 /CONTEXT/
 /REFERENCE IMAGES/
 /audio files/
+/logo/
 /supabase/.temp/
 /.dev/
