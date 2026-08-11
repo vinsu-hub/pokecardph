@@ -6,6 +6,12 @@ file is the sequence and the rules, not a replacement for those documents.
 
 **Vault mirror:** `D:\OBSIDIAN\Varix\PokeCard PH\` (8 notes, hub is `PokeCard PH - Overview`).
 
+**Session status (2026-08-12):** Phase 11 is built, verified, and deployed (see below). Phase 12 —
+a full-site audit, the vendor storefront's 1:1 rebuild against `VENDOR STORE VIEW.png`, a 3D
+shelf "picking" card interaction, and a landing-carousel hardening pass — is **planned but not
+started**. Full carry-over plan, context, and session-end state: **`TODO_FUTURE_SESSION.md`**
+(project root). Read that file first in a fresh conversation before starting new work.
+
 ---
 
 ## Scope — read this first
@@ -810,6 +816,11 @@ it.
 
 ### By phase
 
+- **Phase 12 (planned, not started)** — full-site audit + checklist, vendor storefront rebuilt 1:1
+  against `VENDOR STORE VIEW.png` (in-shop search, sort dropdown, grid/list toggle, multi-select
+  facets, icon stat cards, shelf chevron paging), a new 3D shelf "picking" card interaction (hover
+  tilt/glow/price-callout) applied to both storefront shelves and Browse/Search grids, and a
+  landing-carousel reduced-motion hardening pass. Full detail in `TODO_FUTURE_SESSION.md`.
 - **Phase 4** — `/vendor/auctions/create` is a standalone form; fold it into the Add Listing wizard
   as its Sale Type branch. Deferred originally only because the wizard didn't exist yet when Auctions
   was built — the shape was always intended to converge.
