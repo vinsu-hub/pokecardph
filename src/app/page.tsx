@@ -36,7 +36,11 @@ export default async function HomePage({
   let query = supabase
     .from("listings")
     .select("*, cards(*), shops(*)", { count: "exact" })
-    .eq("status", "active");
+    .eq("status", "active")
+    // Fixed-price only. Auctions live on /auctions and carry a countdown and a
+    // current bid rather than a price — mixing them into this grid would show
+    // a starting bid as if it were a buy-now price.
+    .eq("sale_type", "fixed");
 
   if (type === "graded") query = query.eq("listing_type", "graded");
   if (type === "non_graded") query = query.eq("listing_type", "non_graded");

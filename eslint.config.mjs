@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local dev scripts (migrations, seeds, verification harness). Gitignored,
+    // never shipped, and not held to app lint rules.
+    ".dev/**",
   ]),
 ]);
 

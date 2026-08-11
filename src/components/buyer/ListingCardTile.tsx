@@ -14,6 +14,11 @@ import { conditionLabel, type ListingCard } from "@/lib/supabase/types";
 export function ListingCardTile({ listing }: { listing: ListingCard }) {
   const { cards: card, shops: shop } = listing;
 
+  // card_id became nullable in Phase 4 so sealed product and merch could be
+  // auctioned. Those listings have no catalog row, so this component has to
+  // tolerate one rather than assume it.
+  if (!card) return null;
+
   return (
     <Link
       href={`/card/${listing.id}`}
