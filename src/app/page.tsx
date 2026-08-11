@@ -1,174 +1,194 @@
-"use client";
-
-import { useState } from "react";
+import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/shared/AppShell";
 import { FilterSheet } from "@/components/shared/FilterSheet";
-import { SlideOver } from "@/components/shared/SlideOver";
-import { ResponsiveTable, type Column } from "@/components/shared/ResponsiveTable";
-import { StatusPill, ORDER_TONE } from "@/components/shared/StatusPill";
-import {
-  StickyActionBar,
-  StickyActionBarSpacer,
-} from "@/components/shared/StickyActionBar";
-import { php } from "@/lib/utils";
+import { ListingCardTile } from "@/components/buyer/ListingCardTile";
+import type { ListingCard } from "@/lib/supabase/types";
 
 /**
- * Phase 0 gate page — proves the tokens resolve and the five responsive shell
- * components switch correctly at the 640/1024px lines. Replaced by the real
- * Home/Browse in Phase 1.
+ * Home / Browse.
+ * Reference: REFERENCE IMAGES/SHOP PAGE.png — despite the filename, that image
+ * is this screen, not the shop storefront.
+ *
+ * Horizontal filter bar (not the left sidebar used by Search results), result
+ * count, card grid, pagination.
  */
 
-type Order = {
-  id: string;
-  buyer: string;
-  item: string;
-  amount: number;
-  status: keyof typeof ORDER_TONE;
-  date: string;
-};
+export const dynamic = "force-dynamic";
 
-const ORDERS: Order[] = [
-  { id: "#PC-10482", buyer: "Vince T.", item: "Charizard ex PSA 10", amount: 4500, status: "paid", date: "May 13" },
-  { id: "#PC-10481", buyer: "Miguel D.", item: "Gengar VMAX", amount: 2800, status: "preparing", date: "May 13" },
-  { id: "#PC-10479", buyer: "Zach R.", item: "Pikachu AR", amount: 1250, status: "shipped", date: "May 12" },
-  { id: "#PC-10477", buyer: "Kaye B.", item: "Blastoise ex", amount: 1800, status: "completed", date: "May 12" },
-];
+const PAGE_SIZE = 20;
 
-const COLUMNS: Column<Order>[] = [
-  { key: "id", header: "Order ID", cell: (o) => <span className="font-medium text-primary">{o.id}</span>, mobile: "title" },
-  { key: "status", header: "Status", cell: (o) => <StatusPill tone={ORDER_TONE[o.status]}>{o.status}</StatusPill>, mobile: "meta" },
-  { key: "buyer", header: "Buyer", cell: (o) => o.buyer },
-  { key: "item", header: "Item", cell: (o) => o.item },
-  { key: "amount", header: "Amount", cell: (o) => <span className="tabular font-bold">{php(o.amount)}</span> },
-  { key: "date", header: "Date", cell: (o) => <span className="text-text-secondary">{o.date}</span> },
-];
+type Search = { page?: string; type?: string; sort?: string };
 
-const TOKENS = [
-  ["primary", "bg-primary"],
-  ["primary-hover", "bg-primary-hover"],
-  ["primary-subtle", "bg-primary-subtle"],
-  ["bg-muted", "bg-bg-muted"],
-  ["border", "bg-border"],
-  ["text-primary", "bg-text-primary"],
-  ["text-secondary", "bg-text-secondary"],
-  ["text-muted", "bg-text-muted"],
-] as const;
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<Search>;
+}) {
+  const sp = await searchParams;
+  const page = Math.max(1, Number(sp.page ?? 1));
+  const type = sp.type ?? "all";
+  const sort = sp.sort ?? "newest";
 
-export default function Page() {
-  const [panel, setPanel] = useState(false);
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("listings")
+    .select("*, cards(*), shops(*)", { count: "exact" })
+    .eq("status", "active");
+
+  if (type === "graded") query = query.eq("listing_type", "graded");
+  if (type === "non_graded") query = query.eq("listing_type", "non_graded");
+
+  query =
+    sort === "price_asc"
+      ? query.order("price", { ascending: true })
+      : sort === "price_desc"
+        ? query.order("price", { ascending: false })
+        : query.order("created_at", { ascending: false });
+
+  const from = (page - 1) * PAGE_SIZE;
+  const { data, count, error } = await query.range(from, from + PAGE_SIZE - 1);
+
+  const listings = (data ?? []) as unknown as ListingCard[];
+  const total = count ?? 0;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <AppShell cartCount={2}>
-      <div className="flex flex-col gap-8">
+    <AppShell>
+      <div className="flex flex-col gap-6">
         <header>
-          <h1 className="text-display font-bold">Phase 0 — shell check</h1>
+          <h1 className="text-display font-bold">Pokémon Cards for Sale</h1>
           <p className="mt-1 text-body text-text-secondary">
-            Resize across 640px and 1024px. Nav becomes a bottom tab bar, filters
-            become a sheet, the table becomes cards, the action bar pins.
+            Buy from verified Filipino collectors and vendors.
           </p>
         </header>
 
-        {/* Tokens */}
-        <section>
-          <h2 className="text-h2 font-semibold">Color tokens</h2>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-            {TOKENS.map(([name, cls]) => (
-              <div key={name} className="flex flex-col gap-1.5">
-                <div className={`h-14 rounded-md border border-border ${cls}`} />
-                <span className="text-caption text-text-secondary">{name}</span>
+        {/* Filter bar — horizontal on this screen, per the reference. Collapses
+            into the shared FilterSheet below 1024px. */}
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-bg p-3">
+          <TypeTabs active={type} sort={sort} />
+          <div className="ml-auto flex items-center gap-2">
+            <SortLinks active={sort} type={type} />
+            <FilterSheet mobileOnly activeCount={type === "all" ? 0 : 1}>
+              <div className="rounded-lg border border-border bg-bg p-(--card-pad)">
+                <h3 className="text-h3 font-semibold">Card type</h3>
+                <ul className="mt-2 flex flex-col">
+                  {TYPES.map((t) => (
+                    <li key={t.value}>
+                      <a
+                        href={`/?type=${t.value}&sort=${sort}`}
+                        className="flex h-11 items-center text-body"
+                      >
+                        {t.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            ))}
+            </FilterSheet>
           </div>
-        </section>
+        </div>
 
-        {/* Status pills */}
-        <section>
-          <h2 className="text-h2 font-semibold">Status vocabulary</h2>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <StatusPill tone="success">completed</StatusPill>
-            <StatusPill tone="info">preparing</StatusPill>
-            <StatusPill tone="attention">pending</StatusPill>
-            <StatusPill tone="danger">cancelled</StatusPill>
-            <StatusPill tone="paid">paid</StatusPill>
-            <StatusPill tone="neutral">shipped</StatusPill>
-          </div>
-        </section>
+        {error ? (
+          <p className="rounded-lg border border-danger-bg bg-danger-bg px-4 py-3 text-body text-danger">
+            Couldn&apos;t load listings: {error.message}
+          </p>
+        ) : (
+          <>
+            <p className="text-body text-text-secondary">
+              <span className="font-medium text-text-primary tabular">
+                {total.toLocaleString("en-PH")}
+              </span>{" "}
+              listing{total === 1 ? "" : "s"} found
+            </p>
 
-        {/* Type scale */}
-        <section>
-          <h2 className="text-h2 font-semibold">Type scale</h2>
-          <div className="mt-3 flex flex-col gap-2 rounded-lg border border-border bg-bg p-(--card-pad)">
-            <p className="text-display font-bold">Display 32/700</p>
-            <p className="text-h2 font-semibold">H2 24/600</p>
-            <p className="text-h3 font-semibold">H3 18/600</p>
-            <p className="text-body">Body 14/400</p>
-            <p className="text-body font-medium">Body emphasis 14/500</p>
-            <p className="text-caption text-text-secondary">Caption 12/400</p>
-            <p className="text-body font-bold tabular">{php(128450)} — price 700, tabular</p>
-          </div>
-        </section>
-
-        {/* Filter + table */}
-        <section className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-          <FilterSheet activeCount={3}>
-            <div className="rounded-lg border border-border bg-bg p-(--card-pad)">
-              <h3 className="text-h3 font-semibold">Filter By</h3>
-              <ul className="mt-3 flex flex-col gap-2 text-body">
-                {["Scarlet & Violet", "Sword & Shield", "Sun & Moon", "XY Series"].map((s) => (
-                  <li key={s}>
-                    {/* Whole row is the tap target, not just the 16px box. */}
-                    <label className="flex h-11 cursor-pointer items-center gap-2">
-                      <input type="checkbox" className="size-4 accent-[var(--color-primary)]" />
-                      <span className="flex-1">{s}</span>
-                    </label>
+            {listings.length === 0 ? (
+              <p className="rounded-lg border border-border bg-bg px-6 py-12 text-center text-body text-text-secondary">
+                No listings match these filters yet.
+              </p>
+            ) : (
+              <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                {listings.map((l) => (
+                  <li key={l.id}>
+                    <ListingCardTile listing={l} />
                   </li>
                 ))}
               </ul>
-            </div>
-          </FilterSheet>
+            )}
 
-          <div className="min-w-0 flex-1">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-h2 font-semibold">Recent Orders</h2>
-              <button
-                onClick={() => setPanel(true)}
-                className="h-11 rounded-md border border-border bg-bg px-4 text-body font-medium transition-transform duration-(--duration-instant) active:scale-[0.98]"
-              >
-                Open slide-over
-              </button>
-            </div>
-            <ResponsiveTable
-              columns={COLUMNS}
-              rows={ORDERS}
-              rowKey={(o) => o.id}
-              onRowClick={() => setPanel(true)}
-            />
-          </div>
-        </section>
-
-        <StickyActionBar>
-          <button className="h-11 w-full rounded-md bg-primary px-4 text-body font-medium text-white transition-all duration-(--duration-instant) hover:bg-primary-hover active:scale-[0.98] lg:w-auto">
-            Primary action — pinned on mobile
-          </button>
-        </StickyActionBar>
-        <StickyActionBarSpacer />
+            {pages > 1 && (
+              <nav className="flex items-center justify-center gap-1 pt-2">
+                {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
+                  <a
+                    key={p}
+                    href={`/?page=${p}&type=${type}&sort=${sort}`}
+                    aria-current={p === page ? "page" : undefined}
+                    className={`grid h-11 min-w-11 place-items-center rounded-md px-3 text-body font-medium tabular ${
+                      p === page
+                        ? "bg-primary text-white"
+                        : "border border-border bg-bg text-text-secondary hover:bg-bg-muted"
+                    }`}
+                  >
+                    {p}
+                  </a>
+                ))}
+              </nav>
+            )}
+          </>
+        )}
       </div>
-
-      <SlideOver
-        open={panel}
-        onClose={() => setPanel(false)}
-        title="Order #PC-10482"
-        footer={
-          <button className="h-11 w-full rounded-md bg-primary text-body font-medium text-white active:scale-[0.98]">
-            Mark as Shipped
-          </button>
-        }
-      >
-        <p className="text-body text-text-secondary">
-          Full-height on mobile, 480px panel on desktop. Escape closes it, body
-          scroll locks while open, and the exit runs faster than the entrance.
-        </p>
-      </SlideOver>
     </AppShell>
+  );
+}
+
+const TYPES = [
+  { value: "all", label: "All Cards" },
+  { value: "graded", label: "Graded" },
+  { value: "non_graded", label: "Non-Graded" },
+];
+
+function TypeTabs({ active, sort }: { active: string; sort: string }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {TYPES.map((t) => (
+        <a
+          key={t.value}
+          href={`/?type=${t.value}&sort=${sort}`}
+          className={`flex h-11 items-center rounded-md px-4 text-body font-medium transition-colors duration-(--duration-instant) ${
+            active === t.value
+              ? "bg-primary-subtle text-primary"
+              : "border border-border bg-bg text-text-secondary hover:bg-bg-muted"
+          }`}
+        >
+          {t.label}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+const SORTS = [
+  { value: "newest", label: "Newest" },
+  { value: "price_asc", label: "Price ↑" },
+  { value: "price_desc", label: "Price ↓" },
+];
+
+function SortLinks({ active, type }: { active: string; type: string }) {
+  return (
+    <div className="hidden gap-1 sm:flex">
+      {SORTS.map((s) => (
+        <a
+          key={s.value}
+          href={`/?type=${type}&sort=${s.value}`}
+          className={`flex h-11 items-center rounded-md px-3 text-body transition-colors duration-(--duration-instant) ${
+            active === s.value
+              ? "bg-primary-subtle font-medium text-primary"
+              : "text-text-secondary hover:bg-bg-muted"
+          }`}
+        >
+          {s.label}
+        </a>
+      ))}
+    </div>
   );
 }

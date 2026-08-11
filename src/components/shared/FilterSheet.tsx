@@ -18,11 +18,18 @@ export function FilterSheet({
   children,
   activeCount = 0,
   className,
+  mobileOnly = false,
 }: {
   children: React.ReactNode;
   /** Shown on the mobile trigger so active filters aren't invisible when collapsed. */
   activeCount?: number;
   className?: string;
+  /**
+   * Suppress the desktop sidebar. Use on screens that already express their
+   * filters some other way at desktop width — Home/Browse has a horizontal
+   * filter bar, so rendering a sidebar there too would duplicate the controls.
+   */
+  mobileOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const mounted = useIsClient();
@@ -42,14 +49,11 @@ export function FilterSheet({
   return (
     <>
       {/* Desktop: inline sidebar */}
-      <aside
-        className={cn(
-          "hidden w-[264px] shrink-0 lg:block",
-          className,
-        )}
-      >
-        {children}
-      </aside>
+      {!mobileOnly && (
+        <aside className={cn("hidden w-[264px] shrink-0 lg:block", className)}>
+          {children}
+        </aside>
+      )}
 
       {/* Mobile: trigger */}
       <button
