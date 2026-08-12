@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionUser, shellUser } from "@/lib/auth";
 import { AppShell } from "@/components/shared/AppShell";
 import { ListingCardTile } from "@/components/buyer/ListingCardTile";
+import { StatusPill } from "@/components/shared/StatusPill";
 import { getCartCount } from "@/lib/cart";
 import type { ListingCard } from "@/lib/supabase/types";
 
@@ -99,11 +100,8 @@ export default async function ShopPage({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-display font-bold">{shop.name}</h1>
-              {shop.tier === "premium" && (
-                <span className="rounded-full bg-paid-bg px-2.5 py-0.5 text-caption font-medium text-paid">
-                  Premium Shop
-                </span>
-              )}
+              {shop.tier === "premium" && <StatusPill tone="paid">Premium Shop</StatusPill>}
+              {shop.is_beta_vendor && <StatusPill tone="attention">Founding Vendor</StatusPill>}
             </div>
             <p className="mt-1 text-body text-text-secondary">
               ★ {shop.rating} ({shop.review_count}) · {shop.follower_count} followers

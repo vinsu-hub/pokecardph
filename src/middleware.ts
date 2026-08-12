@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * the point of action (Buy Now, Place Bid, Propose Trade). That soft-gate is
  * the auth spec's central decision; these matchers are its enforcement half.
  */
-const PROTECTED = ["/trade", "/vendor", "/orders", "/cart", "/checkout", "/messages"];
+const PROTECTED = ["/trade", "/vendor", "/orders", "/cart", "/checkout", "/messages", "/beta/signup"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });

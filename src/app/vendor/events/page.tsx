@@ -54,7 +54,7 @@ export default async function VendorEventsPage() {
     .order("week_start", { ascending: false });
 
   return (
-    <VendorShell shopName={user.shopName ?? "Your shop"}>
+    <VendorShell shopName={user.shopName ?? "Your shop"} tier={user.shopTier} isBetaVendor={user.isBetaVendor}>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-display font-bold">Events</h1>
         <Link

@@ -53,7 +53,7 @@ export default async function ScanPage({
   const flatTierSatisfied = primaryPhoto(listing.photos) !== null || listing.scan_tier !== null;
 
   return (
-    <VendorShell shopName={user.shopName ?? "Your shop"}>
+    <VendorShell shopName={user.shopName ?? "Your shop"} tier={user.shopTier} isBetaVendor={user.isBetaVendor}>
       <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
         {/* ---- Listing Steps rail ---- */}
         <aside>

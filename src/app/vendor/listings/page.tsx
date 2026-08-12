@@ -64,7 +64,7 @@ export default async function VendorListingsPage({
     t === "all" ? counts?.length ?? 0 : (counts ?? []).filter((c) => c.status === t).length;
 
   return (
-    <VendorShell shopName={user.shopName ?? "Your shop"}>
+    <VendorShell shopName={user.shopName ?? "Your shop"} tier={user.shopTier} isBetaVendor={user.isBetaVendor}>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-display font-bold">Listings</h1>
         <Link

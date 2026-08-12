@@ -10,6 +10,9 @@ export type SessionUser = {
   shopName: string | null;
   /** Drives the restricted-state guard on listing and auction creation. */
   billingStatus: "trial" | "active" | "past_due" | "restricted" | null;
+  /** Drives the Premium Shop / Founding Vendor badges in VendorShell. */
+  shopTier: "free" | "premium" | null;
+  isBetaVendor: boolean;
 };
 
 /**
@@ -35,7 +38,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   const { data: shop } = await supabase
     .from("shops")
-    .select("id, name, billing_status")
+    .select("id, name, billing_status, tier, is_beta_vendor")
     .eq("vendor_id", user.id)
     .maybeSingle();
 
@@ -47,6 +50,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     shopId: shop?.id ?? null,
     shopName: shop?.name ?? null,
     billingStatus: (shop?.billing_status as SessionUser["billingStatus"]) ?? null,
+    shopTier: (shop?.tier as SessionUser["shopTier"]) ?? null,
+    isBetaVendor: shop?.is_beta_vendor ?? false,
   };
 }
 

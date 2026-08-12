@@ -36,6 +36,12 @@ export type Shop = {
   review_count: number;
   follower_count: number;
   joined_at: string;
+  trial_ends_at: string | null;
+  trial_gmv_cap: number;
+  trial_gmv_used: number;
+  billing_status: "trial" | "active" | "past_due" | "restricted";
+  is_beta_vendor: boolean;
+  beta_registered_at: string | null;
 };
 
 export type Listing = {

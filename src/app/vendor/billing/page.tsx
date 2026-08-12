@@ -64,7 +64,7 @@ export default async function BillingPage() {
   );
 
   return (
-    <VendorShell shopName={user.shopName ?? "Your shop"} tier={shop?.tier}>
+    <VendorShell shopName={user.shopName ?? "Your shop"} tier={shop?.tier} isBetaVendor={shop?.is_beta_vendor}>
       <h1 className="text-display font-bold">Billing</h1>
       <p className="mt-1 text-body text-text-secondary">
         Your subscription scales with what you sell, not a flat per-seat fee.
@@ -79,29 +79,42 @@ export default async function BillingPage() {
         {/* Trial or current tier */}
         {inTrial ? (
           <section className="rounded-lg border border-border bg-primary-subtle p-(--card-pad)">
-            <h2 className="text-h3 font-semibold text-primary">Free trial</h2>
+            <h2 className="text-h3 font-semibold text-primary">
+              {shop?.is_beta_vendor ? "Founding Vendor trial" : "Free trial"}
+            </h2>
             <p className="mt-1 text-display font-bold tabular">{daysLeft} days left</p>
             <p className="text-body text-text-secondary">
-              Full Premium features, ₱0 subscription. Growth surcharge waived.
+              {shop?.is_beta_vendor
+                ? "Full Premium features, ₱0 subscription, no GMV cap."
+                : "Full Premium features, ₱0 subscription. Growth surcharge waived."}
             </p>
 
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-caption text-text-secondary">
-                <span>Trial GMV</span>
-                <span className="tabular">
-                  {php(currentGmv)} of {php(cap)}
-                </span>
-              </div>
-              <div className="mt-1 h-2 overflow-hidden rounded-full bg-bg">
-                <div
-                  className="h-full rounded-full bg-primary transition-[width] duration-(--duration-slow)"
-                  style={{ width: `${capPct}%` }}
-                />
-              </div>
-              <p className="mt-1 text-caption text-text-secondary">
-                The trial ends at 60 days or {php(cap)} GMV, whichever comes first.
+            {shop?.is_beta_vendor ? (
+              <p className="mt-4 rounded-md bg-bg px-3 py-2 text-body text-text-secondary">
+                As a Founding Vendor, your trial has no sales cap — sell as much as you want
+                {shop?.trial_ends_at &&
+                  ` through ${new Date(shop.trial_ends_at).toLocaleDateString("en-PH", { month: "long", day: "numeric" })}`}
+                .
               </p>
-            </div>
+            ) : (
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-caption text-text-secondary">
+                  <span>Trial GMV</span>
+                  <span className="tabular">
+                    {php(currentGmv)} of {php(cap)}
+                  </span>
+                </div>
+                <div className="mt-1 h-2 overflow-hidden rounded-full bg-bg">
+                  <div
+                    className="h-full rounded-full bg-primary transition-[width] duration-(--duration-slow)"
+                    style={{ width: `${capPct}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-caption text-text-secondary">
+                  The trial ends at 60 days or {php(cap)} GMV, whichever comes first.
+                </p>
+              </div>
+            )}
 
             <p className="mt-4 rounded-md bg-bg px-3 py-2 text-body">
               Projected first bill{" "}

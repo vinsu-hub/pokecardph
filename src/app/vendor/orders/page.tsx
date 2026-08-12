@@ -101,7 +101,7 @@ export default async function VendorOrdersPage({
   const orders = filter === "all" ? all : all.filter((o) => o.status === filter);
 
   return (
-    <VendorShell shopName={user.shopName ?? "Your shop"}>
+    <VendorShell shopName={user.shopName ?? "Your shop"} tier={user.shopTier} isBetaVendor={user.isBetaVendor}>
       <h1 className="text-display font-bold">Orders</h1>
 
       <div className="mt-4 flex flex-wrap gap-1">

@@ -32,7 +32,7 @@ export async function runAggregateGmv() {
 
   const { data: shops } = await db
     .from("shops")
-    .select("id, trial_gmv_cap, billing_status");
+    .select("id, trial_gmv_cap, billing_status, is_beta_vendor");
 
   const results: { shop: string; gmv: number; trialEnded: boolean }[] = [];
 
@@ -72,7 +72,14 @@ export async function runAggregateGmv() {
       .upsert({ shop_id: shop.id, period, gmv }, { onConflict: "shop_id,period" });
 
     let trialEnded = false;
-    if (shop.billing_status === "trial") {
+    // Founding Vendors are exempt from the GMV cap entirely — an explicit
+    // flag check, not an implicit "cap = 0 means unlimited" sentinel, so a
+    // data-entry mistake on a non-beta shop can't silently disable its cap.
+    // Side effect: trial_gmv_used stops being tracked for beta shops while
+    // this branch is skipped — acceptable since the Billing page never shows
+    // a cap bar for them, but would need revisiting if a future feature
+    // wants to display beta vendors' actual trial-period GMV.
+    if (shop.billing_status === "trial" && !shop.is_beta_vendor) {
       const cap = Number(shop.trial_gmv_cap ?? 0);
       await db.from("shops").update({ trial_gmv_used: gmv }).eq("id", shop.id);
       if (cap > 0 && gmv > cap) {

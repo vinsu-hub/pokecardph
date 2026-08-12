@@ -86,14 +86,14 @@ export default async function AddListingPage() {
 
   if (user.billingStatus === "restricted") {
     return (
-      <VendorShell shopName={user.shopName ?? "Your shop"}>
+      <VendorShell shopName={user.shopName ?? "Your shop"} tier={user.shopTier} isBetaVendor={user.isBetaVendor}>
         <RestrictedNotice />
       </VendorShell>
     );
   }
 
   return (
-    <VendorShell shopName={user.shopName ?? "Your shop"}>
+    <VendorShell shopName={user.shopName ?? "Your shop"} tier={user.shopTier} isBetaVendor={user.isBetaVendor}>
       <h1 className="text-display font-bold">Add New Listing</h1>
       <p className="mt-1 text-body text-text-secondary">
         List your card for sale and reach thousands of collectors.

@@ -73,7 +73,7 @@ export default async function VendorAuctionsPage({
   const rows = data ?? [];
 
   return (
-    <VendorShell shopName={user.shopName ?? "Your shop"}>
+    <VendorShell shopName={user.shopName ?? "Your shop"} tier={user.shopTier} isBetaVendor={user.isBetaVendor}>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-display font-bold">Auctions</h1>
         <Link

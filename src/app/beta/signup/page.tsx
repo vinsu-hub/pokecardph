@@ -1,24 +1,39 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { createShopForVendor } from "@/lib/shop-signup";
 import { AppShell } from "@/components/shared/AppShell";
 import { shellUser } from "@/lib/auth";
 
 /**
- * Minimal vendor onboarding. Not in any reference image — the Phase 2 spec
- * says to build "a simple 1-page form", so this is that.
- *
- * Exists this phase because a signed-in user needs a `shops` row before they
- * can receive a trade proposal or host an auction. The fuller onboarding
- * (logo upload, banner, verification) belongs to the vendor core loop.
+ * Beta signup — same two fields and guard order as standard vendor
+ * onboarding (src/app/vendor/onboarding/page.tsx) on purpose, so a future
+ * reader sees two nearly-identical files rather than reverse-engineering why
+ * they differ. Protected by middleware.ts's PROTECTED array (unlike /beta
+ * itself, which stays public).
  */
 export const dynamic = "force-dynamic";
 
-async function createShop(formData: FormData) {
+async function registerBetaVendor(formData: FormData) {
   "use server";
   const user = await getSessionUser();
-  if (!user) redirect("/login?next=/vendor/onboarding");
-  if (user.shopId) redirect("/vendor/trade-requests");
+  if (!user) redirect("/login?next=/beta/signup");
+  if (user.shopId) redirect("/vendor/dashboard");
+
+  const supabase = await createClient();
+  const { data: config } = await supabase
+    .from("beta_program_config")
+    .select("*")
+    .eq("id", true)
+    .maybeSingle();
+
+  const now = new Date();
+  const isOpen = !!config && now >= new Date(config.window_start) && now < new Date(config.window_end);
+
+  // The window can close between page render and form submit (a tab left
+  // open past window_end) — re-check here, at the point of insert, rather
+  // than trusting the page-render check alone.
+  if (!isOpen) redirect("/vendor/onboarding?closed=beta");
 
   const name = String(formData.get("name") ?? "").trim();
   const location = String(formData.get("location") ?? "").trim();
@@ -28,42 +43,44 @@ async function createShop(formData: FormData) {
     vendorId: user.id,
     name,
     location: location || null,
-    trialDays: 60,
-    isBetaVendor: false,
+    trialDays: config!.trial_days,
+    isBetaVendor: true,
   });
   if (error) throw new Error(error);
 
-  redirect("/vendor/trade-requests");
+  redirect("/vendor/dashboard?beta=welcome");
 }
 
-export default async function VendorOnboardingPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function BetaSignupPage() {
   const user = await getSessionUser();
-  if (!user) redirect("/login?next=/vendor/onboarding");
-  if (user.shopId) redirect("/vendor/trade-requests");
+  if (!user) redirect("/login?next=/beta/signup");
+  if (user.shopId) redirect("/vendor/dashboard");
 
-  const { closed } = await searchParams;
+  const supabase = await createClient();
+  const { data: config } = await supabase
+    .from("beta_program_config")
+    .select("*")
+    .eq("id", true)
+    .maybeSingle();
+
+  const now = new Date();
+  const isOpen = !!config && now >= new Date(config.window_start) && now < new Date(config.window_end);
+  if (!isOpen) redirect("/vendor/onboarding");
+
+  const cohortName = config?.cohort_name ?? "Founding Vendor";
+  const trialDays = config?.trial_days ?? 90;
 
   return (
     <AppShell user={shellUser(user)}>
       <div className="mx-auto max-w-[520px]">
-        <h1 className="text-display font-bold">Open your shop</h1>
+        <h1 className="text-display font-bold">Apply as a {cohortName}</h1>
         <p className="mt-1 text-body text-text-secondary">
-          One step to start listing, trading, and hosting auctions.
+          One step to start listing, trading, and hosting auctions — free for {trialDays} days,
+          no GMV cap.
         </p>
 
-        {closed === "beta" && (
-          <p className="mt-4 rounded-md bg-attention-bg px-3 py-2 text-caption text-attention">
-            Founding Vendor registration has closed for this window. You can still open a shop
-            with the standard free trial below.
-          </p>
-        )}
-
         <form
-          action={createShop}
+          action={registerBetaVendor}
           className="mt-6 flex flex-col gap-4 rounded-lg border border-border bg-bg p-(--card-pad)"
         >
           <div className="flex flex-col gap-1.5">

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { StatusPill } from "@/components/shared/StatusPill";
 
 /**
  * Vendor face shell: fixed left sidebar + main, per VENDOR DASHBOARD VIEW.png.
@@ -47,10 +48,12 @@ export function VendorShell({
   children,
   shopName,
   tier,
+  isBetaVendor,
 }: {
   children: React.ReactNode;
   shopName: string;
-  tier?: "free" | "premium";
+  tier?: "free" | "premium" | null;
+  isBetaVendor?: boolean;
 }) {
   const pathname = usePathname();
 
@@ -64,10 +67,11 @@ export function VendorShell({
           </span>
           <div className="min-w-0">
             <p className="truncate text-body font-semibold">{shopName}</p>
-            {tier === "premium" && (
-              <span className="mt-0.5 inline-block rounded-full bg-paid-bg px-2 py-0.5 text-caption font-medium text-paid">
-                Premium Shop
-              </span>
+            {(tier === "premium" || isBetaVendor) && (
+              <div className="mt-0.5 flex flex-wrap gap-1">
+                {tier === "premium" && <StatusPill tone="paid">Premium Shop</StatusPill>}
+                {isBetaVendor && <StatusPill tone="attention">Founding Vendor</StatusPill>}
+              </div>
             )}
           </div>
         </div>

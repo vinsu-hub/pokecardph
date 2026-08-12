@@ -80,7 +80,7 @@ export default async function CreateEventPage() {
     .toISOString().slice(0, 16);
 
   return (
-    <VendorShell shopName={user.shopName ?? "Your shop"}>
+    <VendorShell shopName={user.shopName ?? "Your shop"} tier={user.shopTier} isBetaVendor={user.isBetaVendor}>
       <h1 className="text-display font-bold">Host an Event</h1>
       <p className="mt-1 text-body text-text-secondary">
         Offer a gift, set the answer, and choose a window. We&apos;ll start it at

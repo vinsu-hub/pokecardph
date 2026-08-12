@@ -27,12 +27,13 @@ type Row = {
 export default async function VendorDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; beta?: string }>;
 }) {
   const sp = await searchParams;
   const range: RangeKey = (["7d", "30d", "3m", "1y"] as const).includes(sp.range as RangeKey)
     ? (sp.range as RangeKey)
     : "30d";
+  const showBetaWelcome = sp.beta === "welcome";
   const user = await getSessionUser();
   if (!user) redirect("/login?next=/vendor/dashboard");
   if (!user.shopId) redirect("/vendor/onboarding");
@@ -73,8 +74,15 @@ export default async function VendorDashboardPage({
 
   const greeting = greetingFor(new Date().getHours());
 
+  // "Trial ends in N days" — specced in Phase 5, never actually built until
+  // now. Generic for every trial vendor; the beta framing is one copy branch,
+  // not a separate component.
+  const trialDaysLeft = daysUntil(shop?.trial_ends_at);
+  const showTrialBanner =
+    shop?.billing_status === "trial" && trialDaysLeft != null && trialDaysLeft <= 14;
+
   return (
-    <VendorShell shopName={user.shopName ?? "Your shop"} tier={shop?.tier}>
+    <VendorShell shopName={user.shopName ?? "Your shop"} tier={shop?.tier} isBetaVendor={shop?.is_beta_vendor}>
       <header>
         <h1 className="text-display font-bold">
           {greeting}, {user.shopName}! 👋
@@ -83,6 +91,23 @@ export default async function VendorDashboardPage({
           Here&apos;s what&apos;s happening with your shop today.
         </p>
       </header>
+
+      {showBetaWelcome && (
+        <p className="mt-4 rounded-md bg-primary-subtle px-3 py-2 text-body text-primary">
+          Welcome, Founding Vendor! 🎉{" "}
+          {shop?.trial_ends_at &&
+            `Your free trial runs until ${new Date(shop.trial_ends_at).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}.`}
+        </p>
+      )}
+
+      {showTrialBanner && (
+        <p className="mt-4 rounded-md bg-attention-bg px-3 py-2 text-caption text-attention">
+          {shop.is_beta_vendor
+            ? `Your Founding Vendor trial ends in ${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} — no GMV cap through the whole window.`
+            : `Your free trial ends in ${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"}.`}{" "}
+          <Link href="/vendor/billing" className="font-medium underline">View billing →</Link>
+        </p>
+      )}
 
       {/* Stats */}
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -365,6 +390,15 @@ function computeMetrics(
       };
     }),
   };
+}
+
+/**
+ * Outside the component, same reason as billing/page.tsx's trialState():
+ * React's purity rule refuses Date.now()/new Date() inside a render body.
+ */
+function daysUntil(dateStr: string | null | undefined) {
+  if (!dateStr) return null;
+  return Math.max(0, Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000));
 }
 
 function greetingFor(hour: number) {

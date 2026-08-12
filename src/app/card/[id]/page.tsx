@@ -19,6 +19,7 @@ import { CardDetailsGrid } from "@/components/buyer/CardDetailsGrid";
 import { MarketPrice } from "@/components/buyer/MarketPrice";
 import { TradeThisCard } from "@/components/buyer/TradeThisCard";
 import { SimilarListingsShelf } from "@/components/buyer/SimilarListingsShelf";
+import { StatusPill } from "@/components/shared/StatusPill";
 
 /**
  * Card Detail (2D).
@@ -173,10 +174,11 @@ export default async function CardDetailPage({
                 </p>
               </div>
             </div>
-            {shop.tier === "premium" && (
-              <span className="mt-2 inline-block rounded-full bg-paid-bg px-2.5 py-0.5 text-caption font-medium text-paid">
-                Premium Shop
-              </span>
+            {(shop.tier === "premium" || shop.is_beta_vendor) && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {shop.tier === "premium" && <StatusPill tone="paid">Premium Shop</StatusPill>}
+                {shop.is_beta_vendor && <StatusPill tone="attention">Founding Vendor</StatusPill>}
+              </div>
             )}
 
             {shop.description && (

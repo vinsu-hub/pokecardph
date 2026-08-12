@@ -112,14 +112,14 @@ export default async function CreateAuctionPage() {
 
   if (user.billingStatus === "restricted") {
     return (
-      <VendorShell shopName={user.shopName ?? "Your shop"}>
+      <VendorShell shopName={user.shopName ?? "Your shop"} tier={user.shopTier} isBetaVendor={user.isBetaVendor}>
         <RestrictedNotice />
       </VendorShell>
     );
   }
 
   return (
-    <VendorShell shopName={user.shopName ?? "Your shop"}>
+    <VendorShell shopName={user.shopName ?? "Your shop"} tier={user.shopTier} isBetaVendor={user.isBetaVendor}>
       <h1 className="text-display font-bold">Create Auction</h1>
       <p className="mt-1 text-body text-text-secondary">
         Rare cards, sealed product, or signed items.

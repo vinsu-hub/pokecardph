@@ -28,7 +28,7 @@ export default async function TradeRequestsPage() {
   const fresh = (trades ?? []).filter((t) => t.status === "proposed");
 
   return (
-    <VendorShell shopName={user.shopName ?? "Your shop"}>
+    <VendorShell shopName={user.shopName ?? "Your shop"} tier={user.shopTier} isBetaVendor={user.isBetaVendor}>
       <header className="flex flex-wrap items-center gap-3">
         <h1 className="text-display font-bold">Trade Requests</h1>
         {fresh.length > 0 && (
