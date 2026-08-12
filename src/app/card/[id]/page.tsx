@@ -1,5 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
+import { ShieldCheck, Lock, Truck, BadgeCheck, HelpCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser, shellUser } from "@/lib/auth";
 import { AppShell } from "@/components/shared/AppShell";
@@ -11,22 +13,27 @@ import { php } from "@/lib/utils";
 import { conditionLabel, type ListingCard } from "@/lib/supabase/types";
 import { getCartCount } from "@/lib/cart";
 import { addToCart } from "@/lib/cart-actions";
-import { CardArt } from "@/components/buyer/CardArt";
-import { primaryPhoto } from "@/lib/photos";
+import { CardImageGallery } from "@/components/buyer/CardImageGallery";
+import { CardCondition } from "@/components/buyer/CardCondition";
+import { CardDetailsGrid } from "@/components/buyer/CardDetailsGrid";
+import { MarketPrice } from "@/components/buyer/MarketPrice";
+import { TradeThisCard } from "@/components/buyer/TradeThisCard";
+import { SimilarListingsShelf } from "@/components/buyer/SimilarListingsShelf";
 
 /**
  * Card Detail (2D).
  *
- * NO REFERENCE IMAGE EXISTS for this screen — `ITEM VIEW WITH 3D MODEL
- * VIEW.png` is the Phase 7 3D Inspection page, a different layout entirely.
- * Derived from MASTER_PROMPT.md §4 (1.2), taking card/badge/typography
- * treatment from SHOP PAGE.png and VENDOR STORE VIEW.png so it reads as the
- * same product.
+ * Reference: `REFERENCE IMAGES/ITEM VIEW WITH 2D IMAGE ONLY.png` — confirmed
+ * during the Phase 12a verification pass to be this screen's real reference
+ * (the doc set previously said none existed; `ITEM VIEW WITH 3D MODEL
+ * VIEW.png` is the separate Phase 7 3D Inspection page).
  *
- * The 3D toggle now routes to /card/[id]/3d (Phase 7).
+ * The 3D toggle routes to /card/[id]/3d (Phase 7).
  *
  * Deliberately NOT built (unspecced mockup features, raised not dropped):
- * AR View, the Market Price comparison widget, Pop. Higher, Add to Watchlist.
+ * AR View, Pop. Higher, Add to Watchlist. No fake grade-quality descriptor
+ * word (e.g. "EX-MT") next to the grade number, and no "Year" field — same
+ * reasoning: don't fabricate a number/word a buyer would read as real data.
  */
 
 export const dynamic = "force-dynamic";
@@ -50,19 +57,17 @@ export default async function CardDetailPage({
   if (!data) notFound();
   const listing = data as unknown as ListingCard;
   const { cards: card, shops: shop } = listing;
+  // card_id is nullable since Phase 4 (sealed product, merch, and signed
+  // items have no catalog card) — this page is only meaningful for a real
+  // card, so treat a null join the same as a missing listing rather than
+  // let every section below assume `card` is always populated.
+  if (!card || !shop) notFound();
 
-  const specs: [string, string | null][] = [
-    ["Grading Company", listing.grading_company],
-    ["Card Grade", listing.grade],
-    ["Cert Number", listing.cert_number],
-    ["Population", listing.population ? String(listing.population) : null],
-    ["Language", card.language],
-    ["Set", card.set_name],
-    ["Card Number", card.card_number],
-    ["Rarity", card.rarity],
-    ["Generation", card.generation],
-    ["Approx. Pull Rate", card.pull_rate],
-  ];
+  const shopInitials = shop.name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase() ?? "")
+    .join("");
 
   return (
     <AppShell user={shellUser(user)} cartCount={cartCount}>
@@ -75,7 +80,7 @@ export default async function CardDetailPage({
       </nav>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        {/* ---------------- Image panel ---------------- */}
+        {/* ---------------- Image panel + left-column sections ---------------- */}
         <div>
           <div className="flex gap-2">
             <span className="rounded-md bg-primary px-3 py-1.5 text-caption font-medium text-white">
@@ -92,31 +97,13 @@ export default async function CardDetailPage({
           {/* Portrait, not the old 4:3 landscape box — a real card photo in a
               landscape frame gets cropped through the artwork. Capped by height
               so a tall card can't push the buy panel off the fold. */}
-          <div className="relative mt-3 mx-auto aspect-[5/7] max-h-[560px] w-fit overflow-hidden rounded-lg border border-border">
-            <span className="absolute top-3 left-3 z-10 rounded-md bg-grade-bg px-2.5 py-1 text-caption font-medium text-grade-text">
-              {conditionLabel(listing)}
-            </span>
-            <CardArt
-              name={card.name}
-              src={primaryPhoto(listing.photos) ?? card.image_url}
-              priority
-              sizes="(min-width: 1024px) 40vw, 90vw"
-            />
-          </div>
+          <CardImageGallery listing={listing} />
 
-          <section className="mt-6 rounded-lg border border-border bg-bg p-(--card-pad)">
-            <h2 className="text-h3 font-semibold">About this card</h2>
-            <p className="mt-2 text-body text-text-secondary">
-              {listing.description ??
-                "No additional description provided by the vendor."}
-            </p>
-            {listing.condition_notes && (
-              <p className="mt-3 text-body text-text-secondary">
-                <span className="font-medium text-text-primary">Condition notes: </span>
-                {listing.condition_notes}
-              </p>
-            )}
-          </section>
+          <CardCondition listing={listing} />
+          <CardDetailsGrid card={card} listing={listing} description={listing.description} />
+          <MarketPrice card={card} listing={listing} />
+          <TradeThisCard userId={user?.id ?? null} listingId={listing.id} shopId={shop.id} />
+          <SimilarListingsShelf card={card} currentListingId={listing.id} />
         </div>
 
         {/* ---------------- Buy panel ---------------- */}
@@ -129,23 +116,24 @@ export default async function CardDetailPage({
                 .join(" · ")}
             </p>
 
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="rounded-md bg-grade-bg px-2.5 py-1 text-caption font-medium text-grade-text">
+                {conditionLabel(listing)}
+              </span>
+              {listing.grading_company && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-grade-bg px-2.5 py-1 text-caption font-medium text-grade-text">
+                  <BadgeCheck className="size-3.5" aria-hidden />
+                  {listing.grading_company} Certified
+                </span>
+              )}
+            </div>
+
             <p className="mt-4 text-display font-bold tabular">{php(listing.price)}</p>
             {listing.compare_price && listing.compare_price > listing.price && (
               <p className="text-caption text-text-secondary">
                 Market <span className="tabular line-through">{php(listing.compare_price)}</span>
               </p>
             )}
-
-            <dl className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
-              {specs
-                .filter(([, v]) => v)
-                .map(([k, v]) => (
-                  <div key={k} className="flex items-center justify-between gap-4">
-                    <dt className="text-caption text-text-secondary">{k}</dt>
-                    <dd className="text-body">{v}</dd>
-                  </div>
-                ))}
-            </dl>
 
             <div className="mt-5 hidden flex-col gap-2 lg:flex">
               <BuyActions listingId={listing.id} shopId={shop.id} />
@@ -155,13 +143,36 @@ export default async function CardDetailPage({
               <span className="font-medium text-primary">Buyer Protection.</span>{" "}
               Covered for item-not-as-described with dispute support.
             </p>
+
+            <ul className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-4">
+              <TrustIcon icon={ShieldCheck} label="100% Authentic" />
+              <TrustIcon icon={Lock} label="Secure Checkout" />
+              <TrustIcon icon={Truck} label="Fast Shipping" />
+            </ul>
           </div>
 
           <div className="rounded-lg border border-border bg-bg p-(--card-pad)">
-            <h2 className="text-h3 font-semibold">{shop.name}</h2>
-            <p className="mt-1 text-caption text-text-secondary">
-              ★ {shop.rating} ({shop.review_count}) · {shop.location}
-            </p>
+            <div className="flex items-center gap-3">
+              {shop.logo_url ? (
+                <Image
+                  src={shop.logo_url}
+                  alt={shop.name}
+                  width={36}
+                  height={36}
+                  className="size-9 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary-subtle text-caption font-medium text-primary">
+                  {shopInitials}
+                </span>
+              )}
+              <div className="min-w-0">
+                <h2 className="truncate text-h3 font-semibold">{shop.name}</h2>
+                <p className="text-caption text-text-secondary">
+                  ★ {shop.rating} ({shop.review_count}) · {shop.location}
+                </p>
+              </div>
+            </div>
             {shop.tier === "premium" && (
               <span className="mt-2 inline-block rounded-full bg-paid-bg px-2.5 py-0.5 text-caption font-medium text-paid">
                 Premium Shop
@@ -183,6 +194,19 @@ export default async function CardDetailPage({
             >
               Visit Store
             </Link>
+          </div>
+
+          <div className="rounded-lg border border-border bg-bg p-(--card-pad)">
+            <div className="flex items-start gap-2">
+              <HelpCircle className="mt-0.5 size-5 shrink-0 text-text-secondary" aria-hidden />
+              <div>
+                <h2 className="text-h3 font-semibold">Need Help?</h2>
+                <p className="mt-1 text-body text-text-secondary">
+                  Have a question about this card or your order? Our support team will be
+                  reachable here soon.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -218,5 +242,20 @@ function BuyActions({ listingId, shopId }: { listingId: string; shopId: string }
         Trade for This Card
       </Link>
     </>
+  );
+}
+
+function TrustIcon({
+  icon: Icon,
+  label,
+}: {
+  icon: typeof ShieldCheck;
+  label: string;
+}) {
+  return (
+    <li className="flex flex-col items-center gap-1 text-center">
+      <Icon className="size-5 text-primary" aria-hidden />
+      <span className="text-caption text-text-secondary">{label}</span>
+    </li>
   );
 }

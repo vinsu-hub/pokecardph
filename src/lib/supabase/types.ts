@@ -68,6 +68,25 @@ export type Listing = {
   /** Added by 0013_scan_tier.sql. Null = not yet scanned — the publish gate
    *  blocks status becoming 'active' without one. */
   scan_tier: "flat" | "full" | null;
+  /** Added by 0019_card_detail_condition_and_price_history.sql, 0-10 each.
+   *  Null on every listing seeded before that migration — CardCondition must
+   *  hide its bar row rather than render a broken 0%-width bar. */
+  condition_centering: number | null;
+  condition_corners: number | null;
+  condition_edges: number | null;
+  condition_surface: number | null;
+};
+
+/** A `price_history` row — added by
+ *  0019_card_detail_condition_and_price_history.sql. Keyed by card + grade,
+ *  not listing, since price history belongs to the card/grade pair rather
+ *  than one vendor's one listing. */
+export type PriceHistoryPoint = {
+  id: string;
+  card_id: string;
+  grade: string;
+  price: number;
+  recorded_at: string;
 };
 
 /** A listing joined to its catalog card and owning shop — the shape every

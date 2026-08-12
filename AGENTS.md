@@ -48,10 +48,12 @@ These win over any skill, any default, and any reference image:
    `PHASE6_EVENTS`, `SHOP_STOREFRONT_ANIMATION`.
 5. `REFERENCE IMAGES/` — layout intent only. View the relevant screens before building them.
    The images live **flat in this folder**, not in `/design-reference/buyer|vendor|shared`.
-   **10 unique screens, not 11** (two files are identical), and **three filenames don't match their
-   contents** — `SHOP PAGE` is Home/Browse, `VENDOR STORE VIEW` is the Shop Storefront, and
-   `ITEM VIEW WITH 3D MODEL VIEW` is a Phase 7 3D page, *not* Card Detail. `VENDOR ADD LISTING` is
-   the non-canonical variant; use `VENDOR ADD NEW LISTING VIEW`. Full audit in `SESSION_PLAN.md`.
+   **11 unique screens, not 10** (corrected 2026-08-12 — two files are identical, but
+   `ITEM VIEW WITH 2D IMAGE ONLY` is Card Detail's real reference and was previously missing from
+   this count), and **three filenames don't match their contents** — `SHOP PAGE` is Home/Browse,
+   `VENDOR STORE VIEW` is the Shop Storefront, and `ITEM VIEW WITH 3D MODEL VIEW` is a Phase 7 3D
+   page, *not* Card Detail. `VENDOR ADD LISTING` is the non-canonical variant; use
+   `VENDOR ADD NEW LISTING VIEW`. Full audit in `SESSION_PLAN.md`.
 6. `audio files/` — 8 cues mapped to role tokens in `SESSION_PLAN.md` §0.4. Processed output lives
    in `public/sfx/`; reference them by role token via `src/lib/audio.ts`, never by filename.
 

@@ -42,8 +42,11 @@ the thing that keeps seven phases built at different times from looking like sev
 
 Full audit: `D:\OBSIDIAN\Varix\PokeCard PH\PokeCard PH - Reference Gaps.md`.
 
-**10 unique screens, not 11.** `BUYER ACTIVE TRADES TAB.png` and `TRADE VIEW.png` are
-byte-identical, so the Active Trades list has no reference.
+**11 unique screens, not 10 — corrected 2026-08-12.** `BUYER ACTIVE TRADES TAB.png` and
+`TRADE VIEW.png` are byte-identical, so the Active Trades list has no reference — but
+`ITEM VIEW WITH 2D IMAGE ONLY.png` (18 files in the folder total) is Card Detail (2D)'s real
+reference, confirmed during the Phase 12a verification pass and previously missing from this count
+entirely. Card Detail was rebuilt to it in Phase 12a.
 
 **Three filenames lie about their contents** — build from the screen, not the name:
 
@@ -794,6 +797,51 @@ Events tab content, and Card Detail spec/store rendering all re-checked on
 
 ---
 
+## Phase 12a — Verification pass + Card Detail rebuild
+
+**Spec:** a "Phase 12a: Verification Pass" (produced `CONTEXT/VERIFIED_GAP_REPORT.md`, superseding
+this document's Outstanding Work Register wherever they conflict) followed by execution of that
+report's recommended order, plus a follow-up independent audit that caught and fixed one real bug
+(nullable `card`/`shop` unguarded on `/card/[id]`, confirmed as a live crash before the fix).
+**Status:** ✅ Built and verified locally, ⚠️ **not yet deployed** — the user was given the deploy
+commands but hasn't run them yet (away from their PC). `0019_card_detail_condition_and_price_
+history.sql` is also still unapplied (needs Supabase Studio's SQL editor). Both are confirmed safe
+to do in either order — every new component degrades gracefully without the migration. Full detail
+in `phase 12.md` (project root); this is the condensed version for the phase ladder.
+
+**Verification pass first, corrections found:** re-ran both previously-failed Explore audits
+(dead-link/disabled-button inventory; nav/flow map), confirmed or corrected every Outstanding Work
+Register item against live evidence rather than prior wording. Notable corrections: local commit
+count is 43 (not "21+"); only 2 distinct dead "Message X" controls exist (not 4), both properly
+disabled; Xendit's gap is stronger than stated (no code anywhere even checks the env var, and
+`/api/webhooks/xendit` doesn't exist); Phase 8's `conversations`/`messages` tables and RLS already
+exist correctly (only UI/Realtime is greenfield); `REFERENCE IMAGES/` has 18 files/11 unique screens
+(not 10) once `ITEM VIEW WITH 2D IMAGE ONLY.png` — Card Detail's real reference — is counted. Two
+previously-unknown genuinely-dead controls found and fixed (ScanStudio's "Preview" button,
+Footer's newsletter form). Decided the four unspecced mockup features: dropped AR View and Pop.
+Higher (no data source, no scope), specced Watchlist minimally as a future fast-follow, and treated
+Market Price as resolved by this same pass's Card Detail rebuild.
+
+**Shipped:** `SlideOver.tsx` gained a real focus trap (confirmed absent by code read, not just
+unverified). Leafeon VSTAR and Gengar VMAX got real photography wired in, joining Mew ex and
+Umbreon VMAX (which turned out to already be live — the prior "shows placeholders" claim was only
+true for half the set). Card Detail (`/card/[id]`) was rebuilt 1:1 to
+`ITEM VIEW WITH 2D IMAGE ONLY.png`: image gallery with thumbnail strip, Card Condition subgrades,
+a 3-column Card Details grid, Market Price with a price-history chart, Trade This Card, and a new
+You Might Also Like row (a new generic `HorizontalScroller` component, not a reuse of the
+storefront's shelf — that turned out to have no chevron paging at all, correcting the original
+spec's assumption that it did). Two additive schema pieces:
+`listings.condition_centering/corners/edges/surface` and a new `price_history` table.
+
+**Verified:** `pnpm lint`/`tsc --noEmit`/`next build` all clean; `/card/[id]` spot-checked locally
+for both a listing with real photos and one without, both rendering correctly with graceful
+degradation on the still-unmigrated schema. **Not verified this pass:** any Playwright-driven
+check — this session's environment can't launch Chromium (missing system libraries, no
+non-interactive `sudo`) — so `journey.mjs`/`controls.mjs`/the new `.dev/verify-carousel-motion.mjs`
+did not run. Flagged here rather than silently assumed green.
+
+---
+
 ## Deferred — not part of this effort
 
 **Native mobile app (React Native).** A separate future project with its own session. The website's
@@ -816,11 +864,21 @@ it.
 
 ### By phase
 
-- **Phase 12 (planned, not started)** — full-site audit + checklist, vendor storefront rebuilt 1:1
-  against `VENDOR STORE VIEW.png` (in-shop search, sort dropdown, grid/list toggle, multi-select
-  facets, icon stat cards, shelf chevron paging), a new 3D shelf "picking" card interaction (hover
+- **Phase 12a — done 2026-08-12**, see phase section above and `phase 12.md`. **Still queued,
+  deferred from the original Phase 12 plan**: full-site audit + checklist, vendor storefront
+  rebuilt 1:1 against `VENDOR STORE VIEW.png` (in-shop search, sort dropdown, grid/list toggle,
+  multi-select facets, icon stat cards, shelf chevron paging — confirmed this pass that the
+  storefront's `Shelf` component has no chevrons today, so this now includes building that from
+  scratch, not just wiring one in), a new 3D shelf "picking" card interaction (hover
   tilt/glow/price-callout) applied to both storefront shelves and Browse/Search grids, and a
-  landing-carousel reduced-motion hardening pass. Full detail in `TODO_FUTURE_SESSION.md`.
+  landing-carousel reduced-motion hardening pass (code-reviewed this pass, found no bug, but never
+  browser-verified — see Accessibility/Playwright note below). **⚠️ Reminder for next session:**
+  Phase 12a is built and verified locally but **not yet deployed**, and its migration
+  (`0019_card_detail_condition_and_price_history.sql`) is still unapplied. Once at your PC: deploy
+  (`vercel deploy --prod --yes --scope vince-tamis`) and run the migration via Supabase Studio (in
+  either order, both confirmed safe independently), then `node .dev/seed-price-history.mjs` and
+  `node .dev/seed-condition-grades.mjs`, then re-verify Card Condition/Market Price on
+  `https://pokecard-ph.vercel.app` itself. Full detail in `phase 12.md`.
 - **Phase 4** — `/vendor/auctions/create` is a standalone form; fold it into the Add Listing wizard
   as its Sale Type branch. Deferred originally only because the wizard didn't exist yet when Auctions
   was built — the shape was always intended to converge.
@@ -830,21 +888,29 @@ it.
   Storage, `/api/scan/[sessionId]/process` running photometric stereo out of the request cycle, and
   the Three.js normal-mapped plane on Card Detail. Full detail in the Phase 7-rev section above and
   [[PokeCard PH - Scan and 3D]] — the capture wizard shell is largely correct and can be kept.
-- **Phase 8** — build from scratch: ALTER `conversations`/`messages` (same trap Phase 3 hit with
-  `trades`), a notifications table, Realtime wiring, and the four dead "Message X" buttons already
-  sitting in the markup.
+- **Phase 8** — `conversations`/`messages` tables and their RLS already exist correctly (confirmed
+  live 2026-08-12 — Phase 1 shells, same trap Phase 3 hit with `trades`: don't mistake "needs ALTER"
+  for "needs CREATE"). Still fully unbuilt: the `context_type`/`context_id`/unread-counter ALTER, a
+  notifications table, Realtime wiring, and the UI behind the two (not four — recounted 2026-08-12)
+  dead "Message X" controls already sitting in the markup, both correctly disabled with a tooltip.
 - **Phase 9** — build from scratch: header autocomplete (`/search` exists, the header bar doesn't),
   `/terms` `/privacy` `/vendor-agreement` (all currently 404), a 404 page, and `loading.tsx` on every
   route — none exist today, so every navigation flashes blank.
 - **Seed** — consolidate the 7 fragmented per-phase seeds plus accumulated test-harness debris into
   one script; reconcile the cast (current seed: `buyer@pokecard.test` + 3 shops; plan: 2 named buyers
   + 2 named vendors with specific stats).
-- **Unspecced mockup features** — `ITEM VIEW WITH 3D MODEL VIEW.png` shows AR View, a Market Price
-  comparison widget, Pop. Higher, and Add to Watchlist. None exist in any spec or schema. Still
-  undecided: spec each one or drop it from the reference image's authority. The Market Price widget
-  matters most — it implies a price-history data source nobody has scoped.
-- **Accessibility** — keyboard traversal and focus-trap on `SlideOver` have never been walked.
-  `:focus-visible` styling is implemented globally; tab order isn't verified.
+- ~~**Unspecced mockup features**~~ — **decided 2026-08-12.** `ITEM VIEW WITH 3D MODEL VIEW.png`
+  shows AR View, a Market Price comparison widget, Pop. Higher, and Add to Watchlist; none existed
+  in any spec or schema. **AR View and Pop. Higher: dropped** — no data source or framework in
+  scope for either, and fabricating a "Pop. Higher" number would be a real credibility risk on a
+  grading-trust marketplace. **Market Price: resolved**, not dropped — built in Phase 12a as
+  `MarketPrice`/`PriceHistoryChart` with a real (if synthetic-seeded) `price_history` table.
+  **Add to Watchlist: specced minimally**, not yet built — one join table (`user_id`, `listing_id`),
+  a toggle button, a list view; low risk, queued as a future fast-follow.
+- ~~**Accessibility — `SlideOver` focus-trap**~~ — **done 2026-08-12.** Confirmed absent by direct
+  code read (not just "never walked"), then built: focus moves into the panel on open, cycles
+  Tab/Shift+Tab within it, returns to the trigger on close. `:focus-visible` styling remains global;
+  full keyboard tab-order across every route still isn't exhaustively walked.
 
 ### Cross-cutting — not owned by any single phase
 
@@ -871,15 +937,19 @@ it.
   own shop's folder succeeds, upload to another shop's folder is rejected, the result is publicly
   readable. `ImageUpload.tsx` is wired into the Add Listing wizard.
 - **GitHub remote.** `git remote -v` returns nothing — no remote is configured at all, on top of
-  `gh auth`'s keyring token being invalid (`gh auth login -h github.com` fixes the latter). 21+
-  commits are local-only on `main`.
+  `gh auth`'s keyring token being invalid (`gh auth login -h github.com` fixes the latter). 43
+  commits are local-only on `master` (recounted 2026-08-12; deploys go via `vercel deploy` directly,
+  not git, so this hasn't blocked shipping).
 - **Google OAuth.** Deferred by explicit request. Needs the Google Cloud Console step (consent
   screen + redirect URIs registered separately for localhost, preview, and production — registering
   only production is the classic failure) before the already-built, already-disabled button can be
   turned on. No schema or policy change needed on this end; RLS already keys off `auth.uid()`
   regardless of how it's populated.
-- **Xendit.** Not provisioned (`XENDIT_SECRET_KEY` empty). Checkout and billing both stop at
-  `pending`/no payable link, and the UI says so rather than implying a working payment path.
+- **Xendit.** Not provisioned (`XENDIT_SECRET_KEY` empty) — and, confirmed 2026-08-12, no code
+  anywhere reads that variable at runtime, so this isn't "ready code waiting on a credential," it's
+  no integration code at all yet. `/api/webhooks/xendit`, listed in this document's own cross-phase
+  reference table below, doesn't exist. Checkout and billing both stop at `pending`/no payable link,
+  and the UI says so rather than implying a working payment path.
 
 ### Open product decisions
 
@@ -912,7 +982,8 @@ and has been for several gates.
 | 6 | `/api/events/resolve` | every 5 minutes |
 
 ### Webhooks
-`/api/webhooks/xendit` — checkout confirmation (Phase 1) and invoice payment (Phase 5).
+`/api/webhooks/xendit` — checkout confirmation (Phase 1) and invoice payment (Phase 5). **Planned,
+not built** — confirmed absent 2026-08-12, see the Xendit line in the Outstanding work register.
 
 ### Known documentation conflicts, already resolved
 - **Phase numbering.** `MASTER_PROMPT.md` §7 lists Phase 4 as Messaging and omits Auctions

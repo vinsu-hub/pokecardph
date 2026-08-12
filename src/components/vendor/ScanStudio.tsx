@@ -57,6 +57,7 @@ export function ScanStudio({
   const [autoGuide, setAutoGuide] = useState(true);
   const [zoom, setZoom] = useState("1x");
   const [rotated, setRotated] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const current = SCAN_STEPS[step];
   const done = captured.length;
@@ -127,6 +128,39 @@ export function ScanStudio({
             />
           </div>
 
+          {/* Preview overlay — the captures taken so far, per the "◎ Preview"
+              button's own tooltip. */}
+          {previewOpen && (
+            <div className="absolute inset-0 z-30 flex flex-col bg-[#0b0d13]/95 p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-body font-medium text-white">
+                  Captures so far ({done}/{SCAN_STEPS.length})
+                </h3>
+                <button
+                  onClick={() => setPreviewOpen(false)}
+                  aria-label="Close preview"
+                  className="grid size-11 place-items-center rounded-md text-white/80 hover:bg-white/10"
+                >
+                  ✕
+                </button>
+              </div>
+              {done === 0 ? (
+                <p className="mt-6 text-center text-body text-white/60">
+                  No captures yet — tap Capture to take your first shot.
+                </p>
+              ) : (
+                <ul className="mt-4 grid grid-cols-3 gap-3 overflow-y-auto">
+                  {captured.map((i) => (
+                    <li key={i} className="flex flex-col gap-1">
+                      <div className="aspect-[4/3] rounded-md bg-gradient-to-br from-slate-300 to-slate-500" />
+                      <span className="text-caption text-white/70">{SCAN_STEPS[i].label}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           {/* Zoom */}
           <div className="absolute bottom-28 left-1/2 z-20 flex -translate-x-1/2 gap-1 rounded-full bg-black/60 p-1 backdrop-blur">
             {["0.5", "1x", "2"].map((z) => (
@@ -171,6 +205,8 @@ export function ScanStudio({
               className="size-16 rounded-full border-4 border-white/70 bg-white transition-transform duration-(--duration-instant) active:scale-95"
             />
             <button
+              onClick={() => setPreviewOpen((p) => !p)}
+              aria-pressed={previewOpen}
               className="flex h-11 flex-col items-center justify-center px-3 text-caption font-medium text-white/80"
               title="Preview shows the captures taken so far"
             >

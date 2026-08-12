@@ -85,6 +85,9 @@ export function Footer() {
           <p className="mt-1 text-caption text-white/60">
             New drops, live auctions and event announcements.
           </p>
+          {/* Not built yet — no newsletter backend exists. Disabled rather
+              than a live form that would just reload the page on submit,
+              the same rule the links above and the socials below follow. */}
           <form className="mt-3 flex gap-2">
             <label htmlFor="newsletter" className="sr-only">Email address</label>
             <input
@@ -92,13 +95,16 @@ export function Footer() {
               name="email"
               type="email"
               placeholder="you@example.com"
-              className="h-11 min-w-0 flex-1 rounded-md border border-white/20 bg-white/5 px-3 text-body text-white placeholder:text-white/40 outline-none focus:border-primary"
+              disabled
+              title="Newsletter delivery isn't wired yet"
+              className="h-11 min-w-0 flex-1 rounded-md border border-white/20 bg-white/5 px-3 text-body text-white placeholder:text-white/40 outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
             />
             <button
-              type="submit"
+              type="button"
+              disabled
               aria-label="Subscribe"
               title="Newsletter delivery isn't wired yet"
-              className="grid size-11 shrink-0 place-items-center rounded-md bg-primary text-white transition-colors duration-(--duration-instant) hover:bg-primary-hover"
+              className="grid size-11 shrink-0 place-items-center rounded-md bg-primary text-white transition-colors duration-(--duration-instant) hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary"
             >
               ➤
             </button>
