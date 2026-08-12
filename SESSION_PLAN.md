@@ -6,11 +6,16 @@ file is the sequence and the rules, not a replacement for those documents.
 
 **Vault mirror:** `D:\OBSIDIAN\Varix\PokeCard PH\` (8 notes, hub is `PokeCard PH - Overview`).
 
-**Session status (2026-08-12):** Phase 11 is built, verified, and deployed (see below). Phase 12 —
-a full-site audit, the vendor storefront's 1:1 rebuild against `VENDOR STORE VIEW.png`, a 3D
-shelf "picking" card interaction, and a landing-carousel hardening pass — is **planned but not
-started**. Full carry-over plan, context, and session-end state: **`TODO_FUTURE_SESSION.md`**
-(project root). Read that file first in a fresh conversation before starting new work.
+**Session status (2026-08-13):** Phase 12a is now fully closed — migration `0019` applied,
+`price_history`/condition grades seeded, deployed and re-verified on
+`https://pokecard-ph.vercel.app` itself (Card Condition and Market Price confirmed rendering with
+real data). Phase 13 (Beta Vendor Program) is also built, committed, pushed, and deployed — see
+below — with one migration (`0020`) still to be run by hand in Supabase Studio. A GitHub remote is
+now configured: `https://github.com/vinsu-hub/pokecardph.git`, `master` pushed and tracking.
+**Still queued, deferred from the original Phase 12 plan**: full-site audit + checklist, the
+vendor storefront's 1:1 rebuild against `VENDOR STORE VIEW.png`, a 3D shelf "picking" card
+interaction, and a landing-carousel hardening pass — full detail in the Outstanding Work Register
+below and in `phase 12.md` (project root).
 
 ---
 
@@ -803,10 +808,12 @@ Events tab content, and Card Detail spec/store rendering all re-checked on
 this document's Outstanding Work Register wherever they conflict) followed by execution of that
 report's recommended order, plus a follow-up independent audit that caught and fixed one real bug
 (nullable `card`/`shop` unguarded on `/card/[id]`, confirmed as a live crash before the fix).
-**Status:** ✅ Built and verified locally, ⚠️ **not yet deployed** — the user was given the deploy
-commands but hasn't run them yet (away from their PC). `0019_card_detail_condition_and_price_
-history.sql` is also still unapplied (needs Supabase Studio's SQL editor). Both are confirmed safe
-to do in either order — every new component degrades gracefully without the migration. Full detail
+**Status:** ✅ Built, migrated, seeded, deployed, and re-verified on production — **fully closed
+2026-08-13.** `0019_card_detail_condition_and_price_history.sql` applied via Supabase Studio,
+`.dev/seed-price-history.mjs` (216 rows across 21 cards) and `.dev/seed-condition-grades.mjs` (5
+listings graded) both run, `vercel deploy --prod --yes --scope vince-tamis` shipped, and Card
+Condition/Market Price confirmed rendering real data by fetching `/card/[id]` directly off
+`https://pokecard-ph.vercel.app` and grepping the response for both section headings. Full detail
 in `phase 12.md` (project root); this is the condensed version for the phase ladder.
 
 **Verification pass first, corrections found:** re-ran both previously-failed Explore audits
@@ -842,6 +849,64 @@ did not run. Flagged here rather than silently assumed green.
 
 ---
 
+## Phase 13 — Beta Vendor Program
+
+**Spec:** a pasted "Beta Vendor Program — Landing Page & Onboarding" prompt, planned and built in
+one session via `/plan`. **Status:** ✅ Built, committed (`5ebe47e`), pushed to
+`github.com/vinsu-hub/pokecardph`, and deployed to `https://pokecard-ph.vercel.app`.
+⚠️ **Migration `0020_beta_vendor_program.sql` is still unapplied** — needs Supabase Studio's SQL
+editor, same situation Phase 12a was in last session. Confirmed safe either order: `/beta`
+degrades to its closed-registration fallback (verified live in production) rather than erroring
+when the table doesn't exist yet.
+
+A shareable `/beta` signup path, separate from the standard "Sell" nav-link onboarding, offering a
+time-boxed launch cohort ("Founding Vendors") 3 months free with **no GMV cap** — meant to be
+posted externally rather than discovered inside the app. Two real deviations from the pasted
+spec, both forced by the codebase rather than assumed: no soft-gate sign-in modal exists anywhere
+(despite the Auth phase's spec describing one), so "Apply as a Founding Vendor" links straight to
+the now-`middleware.ts`-protected `/beta/signup` and rides the existing `/login?next=` redirect
+flow instead; and the registration mutation is a Server Action co-located in the page, matching
+`vendor/onboarding/page.tsx`'s existing convention, not a standalone `/api/beta/register` route.
+
+**Schema:** `shops.is_beta_vendor`/`beta_registered_at`, a new singleton `beta_program_config`
+table (`id boolean primary key default true` + `check (id)` — a second row is physically
+impossible), and a `shops.vendor_id` unique constraint (one-vendor-one-shop was previously
+app-code-only). Confirmed against production data first: 4 shops, zero duplicate `vendor_id`s, so
+the constraint applies cleanly. Window seeded 2026-08-15 → 2026-11-15 (3 months), amber `attention`
+`StatusPill` tone reused for the badge (user's call, over a Plan subagent's independent objection
+that the same tone also means "trial ending / needs attention" elsewhere on the same sidebar —
+flagged, not overridden), global Footer included on `/beta` (diverges from the sibling `/` landing
+page, which omits one — also the user's explicit call).
+
+**A real, adjacent bug fixed as a drive-by:** standard vendor onboarding never set `trial_ends_at`
+on insert — no column default exists for it, so every vendor who onboarded since Phase 5 shipped
+has had `trial_ends_at = NULL`, silently skipped by `runTrialReminder()`'s own null filter and
+mis-evaluated by `runInvoice()`'s trial check. Fixed once, in a new shared
+`createShopForVendor()` helper (`src/lib/shop-signup.ts`) both the standard and beta signup paths
+now call, so the two row shapes can't drift apart.
+
+**Also shipped:** a Founding Vendor badge that stacks with Premium Shop everywhere shop badges
+render (storefront, card detail, every vendor dashboard page) — the 3 previously hand-rolled
+Premium Shop badges were migrated onto `StatusPill` in the same pass rather than adding a 4th
+hand-rolled variant; `getSessionUser()` extended to select `tier`/`is_beta_vendor` in its existing
+one-round-trip shop query so the badge is now consistent across all 11 `VendorShell` pages, not
+just the 2 that happened to fetch a shop row before; an explicit `is_beta_vendor` exemption in the
+nightly GMV aggregator (not an implicit "cap = 0" sentinel); and the Vendor Dashboard's "Trial ends
+in N days" banner — specced back in Phase 5, never actually built until now, built generically for
+every trial vendor with one copy branch for beta framing.
+
+**Verified:** `pnpm lint`/`tsc --noEmit`/`next build` all clean (after fixing one purity-rule
+violation — `Date.now()` inside a Server Component body, resolved the same way
+`vendor/billing/page.tsx`'s existing `trialState()` helper already does, by moving the date math
+outside the component). Local dev-server smoke test: `/beta` 200 (shown correctly in its
+closed-registration fallback pre-migration), `/beta/signup` and `/vendor/onboarding` both 307 to
+login when signed out, `/shops/[shopId]` and `/card/[id]` both 200 with no runtime errors despite
+`is_beta_vendor` not existing in the live schema yet. Re-confirmed the same on production after
+deploy. **Not yet exercised end-to-end** (full beta signup → dashboard → badge → billing walk) —
+blocked on the pending migration; do this once `0020` is applied.
+
+---
+
 ## Deferred — not part of this effort
 
 **Native mobile app (React Native).** A separate future project with its own session. The website's
@@ -864,21 +929,23 @@ it.
 
 ### By phase
 
-- **Phase 12a — done 2026-08-12**, see phase section above and `phase 12.md`. **Still queued,
-  deferred from the original Phase 12 plan**: full-site audit + checklist, vendor storefront
-  rebuilt 1:1 against `VENDOR STORE VIEW.png` (in-shop search, sort dropdown, grid/list toggle,
-  multi-select facets, icon stat cards, shelf chevron paging — confirmed this pass that the
-  storefront's `Shelf` component has no chevrons today, so this now includes building that from
-  scratch, not just wiring one in), a new 3D shelf "picking" card interaction (hover
-  tilt/glow/price-callout) applied to both storefront shelves and Browse/Search grids, and a
-  landing-carousel reduced-motion hardening pass (code-reviewed this pass, found no bug, but never
-  browser-verified — see Accessibility/Playwright note below). **⚠️ Reminder for next session:**
-  Phase 12a is built and verified locally but **not yet deployed**, and its migration
-  (`0019_card_detail_condition_and_price_history.sql`) is still unapplied. Once at your PC: deploy
-  (`vercel deploy --prod --yes --scope vince-tamis`) and run the migration via Supabase Studio (in
-  either order, both confirmed safe independently), then `node .dev/seed-price-history.mjs` and
-  `node .dev/seed-condition-grades.mjs`, then re-verify Card Condition/Market Price on
-  `https://pokecard-ph.vercel.app` itself. Full detail in `phase 12.md`.
+- **Phase 12a — fully closed 2026-08-13** (migrated, seeded, deployed, re-verified on production),
+  see phase section above and `phase 12.md`. **Still queued, deferred from the original Phase 12
+  plan**: full-site audit + checklist, vendor storefront rebuilt 1:1 against
+  `VENDOR STORE VIEW.png` (in-shop search, sort dropdown, grid/list toggle, multi-select facets,
+  icon stat cards, shelf chevron paging — confirmed the storefront's `Shelf` component has no
+  chevrons today, so this now includes building that from scratch, not just wiring one in), a new
+  3D shelf "picking" card interaction (hover tilt/glow/price-callout) applied to both storefront
+  shelves and Browse/Search grids, and a landing-carousel reduced-motion hardening pass
+  (code-reviewed, found no bug, but never browser-verified — see Accessibility/Playwright note
+  below).
+- **Phase 13 (Beta Vendor Program) — built, committed, pushed, and deployed 2026-08-13**, see phase
+  section above. **⚠️ Reminder for next session:** migration `0020_beta_vendor_program.sql` is
+  still unapplied — run it in Supabase Studio's SQL editor (full SQL in the Phase 13 section
+  above), then walk the full beta signup flow end-to-end on production (`/beta` → sign in →
+  `/beta/signup` → shop created with `is_beta_vendor = true` → Founding Vendor badge visible → no
+  GMV-cap bar on the Billing page), since that path hasn't been exercised against real data yet —
+  only smoke-tested pre-migration.
 - **Phase 4** — `/vendor/auctions/create` is a standalone form; fold it into the Add Listing wizard
   as its Sale Type branch. Deferred originally only because the wizard didn't exist yet when Auctions
   was built — the shape was always intended to converge.
@@ -936,10 +1003,10 @@ it.
   path-convention ownership policies. **Proved end-to-end as a real signed-in vendor**: upload to
   own shop's folder succeeds, upload to another shop's folder is rejected, the result is publicly
   readable. `ImageUpload.tsx` is wired into the Add Listing wizard.
-- **GitHub remote.** `git remote -v` returns nothing — no remote is configured at all, on top of
-  `gh auth`'s keyring token being invalid (`gh auth login -h github.com` fixes the latter). 43
-  commits are local-only on `master` (recounted 2026-08-12; deploys go via `vercel deploy` directly,
-  not git, so this hasn't blocked shipping).
+- ~~**GitHub remote.**~~ — **done 2026-08-13.** `origin` now points at
+  `https://github.com/vinsu-hub/pokecardph.git`; `master` pushed and tracking, 45 commits landed.
+  Deploys still go via `vercel deploy` directly, not git — pushing to GitHub doesn't itself trigger
+  a deploy on this project.
 - **Google OAuth.** Deferred by explicit request. Needs the Google Cloud Console step (consent
   screen + redirect URIs registered separately for localhost, preview, and production — registering
   only production is the classic failure) before the already-built, already-disabled button can be
