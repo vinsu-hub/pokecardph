@@ -12,7 +12,12 @@ alter table shops add column if not exists beta_registered_at timestamptz;
 -- (both onboarding paths check `user.shopId` before inserting). Added here
 -- because this migration already touches shop-creation, and a double-submit
 -- race could otherwise insert two shops for one vendor via either path.
-alter table shops add constraint shops_vendor_id_unique unique (vendor_id);
+-- A UNIQUE constraint's backing index surfaces "already exists" as
+-- duplicate_table (42P07), not duplicate_object (42710) — unlike the plain
+-- CHECK constraints in 0004_auctions.sql's version of this pattern.
+do $$ begin
+  alter table shops add constraint shops_vendor_id_unique unique (vendor_id);
+exception when duplicate_table then null; end $$;
 
 -- Singleton config row: `id boolean primary key default true` + `check (id)`
 -- means only `id = true` can ever satisfy the constraint and a second row is

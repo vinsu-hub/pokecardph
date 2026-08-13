@@ -16,10 +16,7 @@ import { createClient } from "@/lib/supabase/client";
  * form is NOT what got built: this stays the existing magic-link flow,
  * unchanged, per AUTH_GOOGLE_SIGNIN.md §5.1 ("email is a magic link, not a
  * password") — a deliberate decision, already working end-to-end in
- * production, that a visual restyle doesn't get to quietly override. The
- * Google button is rendered DISABLED rather than omitted: Google OAuth is
- * deferred pending the Cloud Console step, and keeping it in place means the
- * layout doesn't shift when it's switched on.
+ * production, that a visual restyle doesn't get to quietly override.
  */
 export default function LoginPage() {
   return (
@@ -36,6 +33,7 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [googlePending, setGooglePending] = useState(false);
 
   async function sendLink(e: React.FormEvent) {
     e.preventDefault();
@@ -54,6 +52,22 @@ function LoginForm() {
     }
   }
 
+  async function signInWithGoogle() {
+    setGooglePending(true);
+    const supabase = createClient();
+    const site = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${site}/auth/callback?next=${encodeURIComponent(next)}` },
+    });
+    // On success the browser is redirected to Google — this only returns on failure.
+    if (error) {
+      setGooglePending(false);
+      setState("error");
+      setMessage(error.message);
+    }
+  }
+
   return (
     <main className="grid min-h-svh lg:grid-cols-2">
       {/* ---- Left: identity + form ---- */}
@@ -66,20 +80,15 @@ function LoginForm() {
             Your collection. Your marketplace. Your community.
           </p>
 
-          {/* Deferred — needs the Google Cloud Console consent screen and
-              redirect URIs before it can be enabled. */}
           <button
             type="button"
-            disabled
-            title="Google Sign-In is coming soon"
-            className="mt-6 flex h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-bg text-body font-medium opacity-50"
+            onClick={signInWithGoogle}
+            disabled={googlePending}
+            className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-bg text-body font-medium transition-all duration-(--duration-instant) hover:bg-bg-subtle active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <GoogleMark />
-            Continue with Google
+            {googlePending ? "Signing in…" : "Continue with Google"}
           </button>
-          <p className="mt-1.5 text-center text-caption text-text-muted">
-            Google Sign-In is coming soon — use email below.
-          </p>
 
           <div className="my-5 flex items-center gap-3">
             <span className="h-px flex-1 bg-border" />
@@ -137,8 +146,19 @@ function LoginForm() {
           alt=""
           fill
           priority
-          sizes="50vw"
+          unoptimized
           className="object-cover"
+        />
+        {/* Same seam treatment as the landing page (src/app/page.tsx) — a
+            white gradient bleeds from the left panel into the photo, for
+            visual consistency across every sign-up/sign-in surface rather
+            than a hard-edged two-column split. */}
+        <div
+          aria-hidden
+          className="absolute inset-y-0 left-0 w-1/3"
+          style={{
+            background: "linear-gradient(to right, var(--color-bg) 0%, color-mix(in srgb, var(--color-bg) 40%, transparent) 60%, transparent 100%)",
+          }}
         />
       </div>
     </main>

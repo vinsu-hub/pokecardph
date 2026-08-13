@@ -1,4 +1,4 @@
-/** The Google "G" mark, shared by every disabled "Continue with Google" button. */
+/** The Google "G" mark, shared by every "Continue with Google" button. */
 export function GoogleMark() {
   return (
     <svg viewBox="0 0 18 18" className="size-4" aria-hidden>

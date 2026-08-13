@@ -73,7 +73,12 @@ async function publishListing(formData: FormData) {
   redirect(status === "active" ? `/card/${data.id}` : "/vendor/listings?tab=draft");
 }
 
-export default async function AddListingPage() {
+export default async function AddListingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ beta?: string }>;
+}) {
+  const sp = await searchParams;
   const user = await getSessionUser();
   if (!user) redirect("/login?next=/vendor/listings/add");
   if (!user.shopId) redirect("/vendor/onboarding");
@@ -94,6 +99,11 @@ export default async function AddListingPage() {
 
   return (
     <VendorShell shopName={user.shopName ?? "Your shop"} tier={user.shopTier} isBetaVendor={user.isBetaVendor}>
+      {sp.beta === "welcome" && (
+        <p className="mb-4 rounded-md bg-primary-subtle px-3 py-2 text-body text-primary">
+          Welcome, Founding Vendor! 🎉 Let&apos;s list your first card — your trial has started.
+        </p>
+      )}
       <h1 className="text-display font-bold">Add New Listing</h1>
       <p className="mt-1 text-body text-text-secondary">
         List your card for sale and reach thousands of collectors.
