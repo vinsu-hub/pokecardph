@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser, shellUser } from "@/lib/auth";
 import { AppShell } from "@/components/shared/AppShell";
@@ -10,6 +11,28 @@ import { php } from "@/lib/utils";
 
 /** Auction detail. Image panel reuses Card Detail's layout; 2D only. */
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("auctions")
+    .select("listings(description, cards(name))")
+    .eq("id", id)
+    .maybeSingle();
+  const listing = (
+    data as unknown as { listings: { description: string | null; cards: { name: string } | null } | null } | null
+  )?.listings;
+  const title = listing?.cards?.name ?? listing?.description?.split("\n")[0] ?? "Auction";
+  return {
+    title: `${title} — PokeCard PH Auction`,
+    description: `Bid on ${title} — live auctions on PokeCard PH.`,
+  };
+}
 
 export default async function AuctionDetailPage({
   params,

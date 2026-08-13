@@ -34,6 +34,14 @@ export const metadata: Metadata = {
   title: "PokeCard PH — Buy, Sell & Trade Pokémon Cards",
   description:
     "The Philippine marketplace for Pokémon cards. Buy from verified vendors, trade with collectors, and inspect card condition before you commit.",
+  openGraph: {
+    siteName: "PokeCard PH",
+    locale: "en_PH",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 // Explicit rather than relying on the framework default. `maximumScale` and
