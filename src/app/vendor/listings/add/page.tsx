@@ -46,11 +46,29 @@ async function publishListing(formData: FormData) {
   const scanTier = hasFrontPhoto ? "flat" : null;
 
   const supabase = await createClient();
+
+  // Vendor-typed card details resolve into the shared `cards` catalog rather
+  // than living only on this listing — find_or_create_card() reuses a
+  // matching row (case-insensitive on name+set+number+finish+edition+
+  // language) or creates one, so price history, Card Detail, and cross-vendor
+  // "same card" matching all work the same as they do for catalog cards.
+  const { data: cardId, error: cardError } = await supabase.rpc("find_or_create_card", {
+    p_name: String(formData.get("cardName") || ""),
+    p_set_name: String(formData.get("setName") || ""),
+    p_card_number: String(formData.get("cardNumber") || ""),
+    p_rarity: String(formData.get("rarity") || ""),
+    p_illustrator: String(formData.get("illustrator") || ""),
+    p_finish: String(formData.get("finish") || ""),
+    p_edition: String(formData.get("edition") || ""),
+    p_language: String(formData.get("language") || ""),
+  });
+  if (cardError || !cardId) throw new Error(cardError?.message ?? "Could not save card details");
+
   const { data, error } = await supabase
     .from("listings")
     .insert({
       shop_id: user.shopId,
-      card_id: String(formData.get("cardId")),
+      card_id: cardId,
       listing_type: graded ? "graded" : "non_graded",
       grading_company: graded ? String(formData.get("gradingCompany") || "") || null : null,
       grade: graded ? String(formData.get("grade") || "") || null : null,
@@ -83,12 +101,6 @@ export default async function AddListingPage({
   if (!user) redirect("/login?next=/vendor/listings/add");
   if (!user.shopId) redirect("/vendor/onboarding");
 
-  const supabase = await createClient();
-  const { data: cards } = await supabase
-    .from("cards")
-    .select("id, name, set_name, card_number, rarity")
-    .order("name");
-
   if (user.billingStatus === "restricted") {
     return (
       <VendorShell shopName={user.shopName ?? "Your shop"} tier={user.shopTier} isBetaVendor={user.isBetaVendor}>
@@ -110,7 +122,6 @@ export default async function AddListingPage({
       </p>
       <AddListingWizard
         action={publishListing}
-        cards={cards ?? []}
         shopName={user.shopName ?? "Your shop"}
         shopId={user.shopId}
         draftId={crypto.randomUUID()}

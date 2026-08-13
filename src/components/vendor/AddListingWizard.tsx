@@ -21,8 +21,6 @@ import { ImageUpload } from "@/components/shared/ImageUpload";
  * input; only visibility changes.
  */
 
-type Card = { id: string; name: string; set_name: string; card_number: string | null; rarity: string | null };
-
 const STEPS = ["Card Information", "Condition & Price", "Photos & Description", "Preview"];
 
 /** Per MASTER_PROMPT §2.2 step 3. Slab/Label is only meaningful when graded,
@@ -30,15 +28,24 @@ const STEPS = ["Card Information", "Condition & Price", "Photos & Description", 
  *  Graded toggle flips — a photo grid that reflows mid-wizard loses uploads. */
 const PHOTO_SLOTS = ["Front", "Back", "Close-up", "Slab / Label"];
 
+/** Modern rarity ladder alongside the classic three tiers — free text on the
+ *  server (no DB enum), so this list can grow without a migration. */
+const RARITIES = [
+  "Common", "Uncommon", "Rare", "Double Rare", "Rare Holo", "Reverse Holo",
+  "Ultra Rare", "Illustration Rare", "Special Illustration Rare", "Hyper Rare",
+  "Secret Rare", "Amazing Rare", "Radiant Rare", "ACE SPEC Rare", "Promo", "Other",
+];
+const FINISHES = ["Non-Holo", "Holo", "Reverse Holo", "Full Art", "Other"];
+const EDITIONS = ["Unlimited", "1st Edition", "Shadowless"];
+const LANGUAGES = ["English", "Japanese", "Korean", "Chinese", "Other"];
+
 export function AddListingWizard({
   action,
-  cards,
   shopName,
   shopId,
   draftId,
 }: {
   action: (fd: FormData) => Promise<void>;
-  cards: Card[];
   shopName: string;
   shopId: string;
   /** Groups this wizard session's uploads under one folder. Generated on the
@@ -47,7 +54,8 @@ export function AddListingWizard({
   draftId: string;
 }) {
   const [step, setStep] = useState(1);
-  const [cardId, setCardId] = useState(cards[0]?.id ?? "");
+  const [cardName, setCardName] = useState("");
+  const [setName, setSetName] = useState("");
   const [graded, setGraded] = useState(true);
   const [company, setCompany] = useState("PSA");
   const [grade, setGrade] = useState("10");
@@ -60,7 +68,6 @@ export function AddListingWizard({
   // gated: a vendor should be able to save progress before they have a photo.
   const [hasFrontPhoto, setHasFrontPhoto] = useState(false);
 
-  const card = cards.find((c) => c.id === cardId);
   const condition = graded ? `${company} ${grade}` : "Non-Graded";
 
   return (
@@ -96,28 +103,67 @@ export function AddListingWizard({
           {/* 1 — Card Information */}
           <div hidden={step !== 1}>
             <h2 className="text-h3 font-semibold">Card Information</h2>
-            <div className="mt-3 flex flex-col gap-1.5">
-              <label htmlFor="cardId" className="text-body font-medium">Search the catalog</label>
-              <select
-                id="cardId" name="cardId" value={cardId}
-                onChange={(e) => setCardId(e.target.value)}
-                className="h-11 rounded-md border border-border bg-bg px-3 text-body"
-              >
-                {cards.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} — {c.set_name} {c.card_number ?? ""}
-                  </option>
-                ))}
-              </select>
+            <p className="mt-1 text-caption text-text-secondary">
+              Type in your card&apos;s details — name, set, and number identify exactly which card;
+              finish, edition, and language matter because the same card prices differently across
+              each printing.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Field label="Card name" htmlFor="cardName">
+                <input
+                  id="cardName" name="cardName" required value={cardName}
+                  onChange={(e) => setCardName(e.target.value)}
+                  placeholder="e.g. Charizard ex"
+                  className="h-11 w-full rounded-md border border-border bg-bg px-3 text-body"
+                />
+              </Field>
+              <Field label="Set" htmlFor="setName">
+                <input
+                  id="setName" name="setName" required value={setName}
+                  onChange={(e) => setSetName(e.target.value)}
+                  placeholder="e.g. Obsidian Flames"
+                  className="h-11 w-full rounded-md border border-border bg-bg px-3 text-body"
+                />
+              </Field>
+              <Field label="Card number" htmlFor="cardNumber">
+                <input
+                  id="cardNumber" name="cardNumber" placeholder="e.g. 199/197"
+                  className="h-11 w-full rounded-md border border-border bg-bg px-3 text-body tabular"
+                />
+              </Field>
+              <Field label="Rarity" htmlFor="rarity">
+                <select id="rarity" name="rarity" defaultValue=""
+                  className="h-11 w-full rounded-md border border-border bg-bg px-3 text-body">
+                  <option value="">Not specified</option>
+                  {RARITIES.map((r) => <option key={r}>{r}</option>)}
+                </select>
+              </Field>
+              <Field label="Illustrator" htmlFor="illustrator">
+                <input
+                  id="illustrator" name="illustrator" placeholder="e.g. Mitsuhiro Arita"
+                  className="h-11 w-full rounded-md border border-border bg-bg px-3 text-body"
+                />
+              </Field>
+              <Field label="Finish" htmlFor="finish">
+                <select id="finish" name="finish" defaultValue=""
+                  className="h-11 w-full rounded-md border border-border bg-bg px-3 text-body">
+                  <option value="">Not specified</option>
+                  {FINISHES.map((f) => <option key={f}>{f}</option>)}
+                </select>
+              </Field>
+              <Field label="Edition" htmlFor="edition">
+                <select id="edition" name="edition" defaultValue="Unlimited"
+                  className="h-11 w-full rounded-md border border-border bg-bg px-3 text-body">
+                  {EDITIONS.map((e) => <option key={e}>{e}</option>)}
+                </select>
+              </Field>
+              <Field label="Language" htmlFor="language">
+                <select id="language" name="language" defaultValue="English"
+                  className="h-11 w-full rounded-md border border-border bg-bg px-3 text-body">
+                  {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
+                </select>
+              </Field>
             </div>
-            {card && (
-              <div className="mt-3 rounded-md border border-border p-3">
-                <p className="text-body font-medium">{card.name}</p>
-                <p className="text-caption text-text-secondary">
-                  {[card.set_name, card.card_number, card.rarity].filter(Boolean).join(" · ")}
-                </p>
-              </div>
-            )}
           </div>
 
           {/* 2 — Condition & Price */}
@@ -222,7 +268,7 @@ export function AddListingWizard({
           <div hidden={step !== 4}>
             <h2 className="text-h3 font-semibold">Preview &amp; publish</h2>
             <dl className="mt-3 flex flex-col gap-2">
-              <Sum k="Card" v={card ? `${card.name} — ${card.set_name}` : "—"} />
+              <Sum k="Card" v={`${cardName} — ${setName}`} />
               <Sum k="Condition" v={condition} />
               <Sum k="Price" v={php(Number(price || 0))} />
               <Sum k="Quantity" v={qty} />
@@ -278,10 +324,10 @@ export function AddListingWizard({
             <span className="absolute top-2 left-2 z-10 rounded-md bg-primary px-2 py-0.5 text-caption font-medium text-white">
               {condition}
             </span>
-            <Art name={card?.name ?? "Card"} />
+            <Art name={cardName || "Card"} />
           </div>
-          <p className="mt-3 text-body font-medium">{card?.name ?? "Select a card"}</p>
-          <p className="text-caption text-text-secondary">{card?.set_name}</p>
+          <p className="mt-3 text-body font-medium">{cardName || "Card name"}</p>
+          <p className="text-caption text-text-secondary">{setName}</p>
           <p className="mt-1 text-h3 font-bold tabular">{php(Number(price || 0))}</p>
           {comparePrice && Number(comparePrice) > Number(price) && (
             <p className="text-caption text-text-secondary tabular line-through">

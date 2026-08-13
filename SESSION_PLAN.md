@@ -990,6 +990,48 @@ step outside this session's tools.
 
 ---
 
+## Phase 15 — Manual card entry (Add Listing)
+
+**Status:** ✅ Built, verified end-to-end against the dev DB, migration applied. **Not yet deployed
+to production** and, like the rest of this session's work, not yet committed.
+
+The Add Listing wizard's "Card Information" step (shared identically by standard vendors and Beta
+Vendor instant-activation, both landing on `/vendor/listings/add`) previously limited a vendor to a
+plain unfiltered `<select>` of the ~20 rows in the `cards` catalog, itself seeded once by a
+developer-only script (`.dev/seed.mjs`) — there was no in-product way to add a card, so a vendor
+whose card wasn't one of those ~20 couldn't list it. Replaced with typed fields grounded in
+real-world Pokémon TCG categorization (researched and sourced — set symbol, `NNN/MMM` collector
+number, the modern rarity ladder through Illustration/Special Illustration/Hyper Rare, illustrator
+credit, and the edition/finish/language variants that price the same card+number differently):
+Card name, Set, Card number, Rarity, Illustrator, Finish, Edition, Language.
+
+**Data model, confirmed with the user over the lighter alternative:** typed cards still resolve into
+the shared `cards` catalog via a new `find_or_create_card()` SECURITY DEFINER RPC (migration
+`0022_manual_card_entry.sql`, matching `register_beta_vendor_instant()`'s established pattern) —
+case-insensitive/trimmed match on name+set+number+finish+edition+language reuses an existing row, or
+creates one. `cards` gains three new nullable columns (`illustrator`, `finish`, `edition`); RLS is
+unchanged (public read, no direct insert policy — the RPC is the only write path). This keeps
+price-history charts, Card Detail, and cross-vendor "same card" matching working identically for
+vendor-typed cards as for catalog ones, since every 'card'-category listing still gets a real
+`card_id` — no new `card_id`-null listings are introduced, so the pre-existing non-null `ListingCard`
+type assumption in checkout/cart stays exactly as safe (or unsafe) as it already was.
+
+`AddListingWizard.tsx` no longer takes a `cards` prop — the wizard's full-catalog fetch in
+`add/page.tsx` is gone entirely. The catalog-shortcut/autocomplete alternative was explicitly
+declined in favor of pure typing, per the user's choice.
+
+**Verified** via a new `.dev/verify-manual-card-entry.mjs` (following `journey.mjs`'s established
+real-magic-link sign-in pattern, run against a real seeded vendor): a brand-new card creates exactly
+one `cards` row with all typed fields correct; resubmitting the same details (different casing/
+whitespace) dedupes onto the same row; a different finish correctly creates a second, distinct row;
+Card Detail renders correctly for a vendor-typed card. All cleanup is automatic (deletes its own
+test rows every run). One real bug caught and fixed during this verification pass — not in the
+app, in the test script itself: `waitForURL(/\/vendor\/listings/)`'s regex matched the *starting*
+URL `/vendor/listings/add` too, so it resolved before the actual submit/redirect ever happened,
+producing a flaky false read of the DB mid-flight. Fixed by matching on exact pathname.
+
+---
+
 ## Deferred — not part of this effort
 
 **Native mobile app (React Native).** A separate future project with its own session. The website's

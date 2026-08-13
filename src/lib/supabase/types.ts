@@ -23,6 +23,12 @@ export type Card = {
   image_url: string | null;
   generation: string | null;
   pull_rate: string | null;
+  /** Added by 0022_manual_card_entry.sql, alongside find_or_create_card() —
+   *  the vendor-typed print-variant fields that distinguish otherwise
+   *  identical name+set+number cards. */
+  illustrator: string | null;
+  finish: string | null;
+  edition: string | null;
 };
 
 export type Shop = {
