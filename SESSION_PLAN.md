@@ -17,6 +17,29 @@ vendor storefront's 1:1 rebuild against `VENDOR STORE VIEW.png`, a 3D shelf "pic
 interaction, and a landing-carousel hardening pass — full detail in the Outstanding Work Register
 below and in `phase 12.md` (project root).
 
+**Same day, 2026-08-13, second pass:** Phase 13's beta signup was superseded by an instant-
+activation flow (a real 3-step wizard, then an instant redirect into the Add Listing wizard on
+submit — see the Phase 13 register entry below for the full redesign history). Google OAuth was
+code-enabled, then fully finished (Google Cloud Console + Supabase provider live) and confirmed
+working end-to-end on production. The Storefront vs. `VENDOR STORE VIEW.png` gap was re-confirmed
+against a real screenshot, not just code. Also logged (documentation only, not yet built): the
+updated business model's no-held-funds payment architecture, a net-new News Feed tab, and Full
+Condition Scan monetization — see the Outstanding Work Register's cross-cutting section. Migrations
+`0020`/`0021` applied to production the same day; beta registration opened live.
+
+**Same day, 2026-08-13, third pass:** a Remotion-based Pikachu pixel-art loading animation was
+built (`D:\CODING\remotion`, two rendered clips in `public/loading/`) and wired into beta signup via
+a new `LoadingIndicator` component. Two real Card Detail bugs fixed: the 2D hero image was
+collapsing to near-zero width (`w-fit` with no in-flow children — see `CardImageGallery.tsx`), which
+also surfaced a separate pre-existing mobile horizontal-overflow bug on the same page (the 2-column
+grid had no explicit `grid-cols-1` below `lg:`, so a horizontally-scrolling child could push the
+whole mobile layout wide — fixed in `card/[id]/page.tsx`); and the 3D Inspection view was missing
+the full shop info card the 2D view has, fixed by extracting a shared `ShopInfoCard` component. The
+Storefront shelf got a genuine isometric CSS 3D treatment (not just the subtle ledge effect —
+`rotateY` added alongside the existing `rotateX`, tuned in-browser, confirmed clean in Chromium,
+Firefox, and WebKit) plus chevron paging, search, sort, grid/list toggle, true multi-select facets,
+and an icon stat header — closing out the Storefront rebuild item queued below.
+
 ---
 
 ## Scope — read this first
@@ -907,6 +930,66 @@ blocked on the pending migration; do this once `0020` is applied.
 
 ---
 
+## Phase 14 — Rich Link Preview (Open Graph images)
+
+**Spec:** a pasted "Rich Link Preview (Open Graph Image) Implementation Prompt," planned via
+`/plan` and built in one session. **Status:** ✅ Built, verified locally and on production, deployed
+to `https://pokecard-ph.vercel.app`. **Not yet committed to git** — see the note at the top of this
+document's changelog area; this sits alongside the rest of this session's uncommitted work.
+
+Replaced the broken static `src/app/opengraph-image.png` (a 1080×335 copy of the logo lockup — wrong
+aspect ratio, no page anywhere had `generateMetadata`/`openGraph`/`twitter` fields) with a real
+1200×630 default image, plus three dynamic per-page images generated at request time from live data.
+
+**Static default:** `REFERENCE IMAGES/IMAGEPREVIEW.png` cropped to 1200×630 via `sharp` (top
+1536×806 region resized down — the user's confirmed call to drop the bottom feature-bar/URL-pill
+section, keeping logo/tagline/headline/subhead/CTA/cards).
+
+**Dynamic images** (`next/og`'s `ImageResponse`, one per route):
+`src/app/card/[id]/opengraph-image.tsx`, `src/app/shops/[shopId]/opengraph-image.tsx`,
+`src/app/auctions/[id]/opengraph-image.tsx` — each `export const revalidate = 3600`, no explicit
+`runtime` (Node.js is the v16 default and `fs.readFile` needs it). Shared `src/lib/og/` module:
+`OgFrame.tsx` (the one shared layout piece — brand background + corner mark/wordmark), `fonts.ts`
+(module-scope memoized read of two bundled TTFs at `assets/fonts/` — Satori needs raw font bytes,
+not the `next/font/google` Inter already used for on-site CSS), `assets.ts` (image resolution +
+`hashGradientHex`, a hex-output port of `CardArt.tsx`'s hue hash), `countdown.ts`
+(`timeRemainingLabel`, a one-shot port of `Countdown.tsx`'s format minus live-tick machinery),
+`constants.ts`. New `src/lib/supabase/public.ts` — a cookie-free client for these three routes only,
+since the regular `createClient()` calls `cookies()` and would force full per-request dynamic
+rendering; safe because every table read here (`listings`/`cards`/`shops`/`auctions`) is already
+public via RLS.
+
+**Two real bugs found and fixed during local verification, not assumed away:**
+- Satori (the `next/og`/`ImageResponse` renderer) **cannot decode WebP** — this catalog's card
+  photos are `.webp`, and embedding one as a data URI crashed the route (`TypeError: u2 is not
+  iterable`, a minified resvg-wasm failure) for any listing/auction with a real local photo. Fixed
+  by piping every loaded image through `sharp` to normalize to PNG before embedding, in
+  `loadRemoteOrLocalImage()` — not just skipped or silently left broken.
+- A React Fragment (`<>...</>`) inside the Auction template's conditional block is also not
+  Satori-safe; replaced with a plain `<div>` even though the crash's actual cause turned out to be
+  the WebP issue above, since Satori's own docs warn Fragments aren't reliably supported.
+
+**Metadata wiring:** root layout's existing `metadata` export extended (not replaced) with
+`openGraph: { siteName, locale: "en_PH", type: "website" }` and `twitter: { card:
+"summary_large_image" }`; `generateMetadata` added to all three dynamic-image pages (none existed
+before) for `title`/`description`. No `twitter-image.tsx` — X/Twitter falls back to `og:image` once
+`twitter:card` is set. No manual `openGraph.images` anywhere — the file-convention auto-injects
+`og:image:*` tags, and setting them again would duplicate.
+
+**Verified:** lint/`tsc --noEmit`/`next build` clean before and after the WebP fix. Local dev-server
+fetch of all four image routes with real DB rows (including the no-logo shop-initials fallback path
+and both a live and an ended auction), each opened and visually confirmed. Actual `<meta>` tags
+checked via curl on `/`, a card, a shop, and an auction — correct absolute URLs, titles, alt text,
+`twitter:card`. Re-confirmed identically on production after deploy (`vercel env pull` reported
+`NEXT_PUBLIC_SITE_URL=""` for every var including the known-real Supabase anon key — a CLI
+redaction artifact, not real state; verified the actual value via the live site's own rendered
+`og:image` URL instead, which was already correctly absolute). **Not yet run through Facebook's
+Sharing Debugger or Twitter's Card Validator** — those require pasting the production URL into each
+tool's own scrape-again flow, left for the user to trigger since it's an external, cache-sensitive
+step outside this session's tools.
+
+---
+
 ## Deferred — not part of this effort
 
 **Native mobile app (React Native).** A separate future project with its own session. The website's
@@ -931,14 +1014,39 @@ it.
 
 - **Phase 12a — fully closed 2026-08-13** (migrated, seeded, deployed, re-verified on production),
   see phase section above and `phase 12.md`. **Still queued, deferred from the original Phase 12
-  plan**: full-site audit + checklist, vendor storefront rebuilt 1:1 against
-  `VENDOR STORE VIEW.png` (in-shop search, sort dropdown, grid/list toggle, multi-select facets,
-  icon stat cards, shelf chevron paging — confirmed the storefront's `Shelf` component has no
-  chevrons today, so this now includes building that from scratch, not just wiring one in), a new
-  3D shelf "picking" card interaction (hover tilt/glow/price-callout) applied to both storefront
-  shelves and Browse/Search grids, and a landing-carousel reduced-motion hardening pass
-  (code-reviewed, found no bug, but never browser-verified — see Accessibility/Playwright note
-  below).
+  plan**: full-site audit + checklist, a new 3D shelf "picking" card interaction (hover tilt/glow/
+  price-callout) applied to both storefront shelves and Browse/Search grids, and a landing-carousel
+  reduced-motion hardening pass (code-reviewed, found no bug, but never browser-verified — see
+  Accessibility/Playwright note below).
+  ~~Vendor storefront rebuilt 1:1 against `VENDOR STORE VIEW.png`~~ — **done 2026-08-13.** Search,
+  sort, grid/list toggle (reusing `/search`'s `ListingResults`/`ViewToggle`), true multi-select
+  facets (checkbox membership toggling, not single-value replacement), icon stat cards
+  (`lucide-react`, matching `CardDetailsGrid`'s pattern), and chevron paging on `Shelf` (a new
+  shared `useEdgeScroll` hook + `ShelfScroller`, extracted from `HorizontalScroller` so the two
+  can't drift) are all built and confirmed live. Went further than the reference image itself asks
+  for, per explicit request: the shelf is now a genuine isometric CSS 3D treatment (`rotateY` added
+  alongside the pre-existing `rotateX` ledge tilt in `globals.css`, tuned in-browser), not just the
+  subtle ledge effect — confirmed rendering correctly with zero layout overflow in Chromium,
+  Firefox, and WebKit. One real bug caught and fixed along the way: the isometric row's 3D bounding
+  box bled a few pixels past its container into page-level horizontal scroll — contained via
+  `overflow-x: clip` on `.shelf` (with `overflow-y: visible` kept explicit so the hover-lift effect
+  wasn't collateral damage), which in turn required insetting the chevron buttons within the shelf's
+  edge instead of straddling it as `HorizontalScroller`'s does.
+  ~~Card Detail 2D hero image too small~~ — **done 2026-08-13, real bug found, not a false report.**
+  `CardImageGallery.tsx`'s hero box was `w-fit` with zero in-flow children (every child was
+  `position: absolute`), so `fit-content` had nothing to measure and collapsed toward zero width —
+  fixed with a real `w-full max-w-[400px]`. Fixing it surfaced a second, previously-invisible bug on
+  the same page: `card/[id]/page.tsx`'s 2-column grid had no explicit `grid-cols-1` below `lg:`,
+  so a horizontally-scrolling child (the "You Might Also Like" shelf) could push the entire mobile
+  layout wide — 505px of real horizontal page overflow, invisible before only because the collapsed
+  hero never revealed the oversized parent. Both fixed and verified with `document.documentElement.
+  scrollWidth` checks, not just eyeballing a screenshot.
+  ~~Card Detail 3D View missing the shop info card~~ — **done 2026-08-13.** Extracted a shared
+  `ShopInfoCard` component from the 2D page's inline block, rendered identically in both
+  `card/[id]/page.tsx` and `card/[id]/3d/page.tsx` — no more data-thin "Sold by {name}" text line.
+  Still open: `CardImageGallery`/`CardCondition` correctly render nothing for listings that still
+  lack real photography (most of the catalog), which reads as a bare page rather than an obviously-
+  empty state — worth a placeholder treatment in a future pass.
 - **Phase 13 (Beta Vendor Program) — built, committed, pushed, and deployed 2026-08-13**, see phase
   section above. **⚠️ Reminder for next session:** migration `0020_beta_vendor_program.sql` is
   still unapplied — run it in Supabase Studio's SQL editor (full SQL in the Phase 13 section
@@ -946,6 +1054,26 @@ it.
   `/beta/signup` → shop created with `is_beta_vendor = true` → Founding Vendor badge visible → no
   GMV-cap bar on the Billing page), since that path hasn't been exercised against real data yet —
   only smoke-tested pre-migration.
+  **Superseded the same day by instant activation, then redesigned again against real reference
+  imagery** (`REFERENCE IMAGES/VENDOR REGISTRATION BETA.png` +
+  `VENDOR ADD NEW LISTING VIEW.png`, found after the first instant-activation pass): `/beta/signup`
+  is now a **3-step wizard** (Your Information → Shop Details → Review & Submit, plus a 4th
+  "Start Listing" stepper node that represents the handoff rather than a form screen) collecting a
+  richer field set (full name, phone, vendor type as three icon cards, social handle, how-heard).
+  Submitting creates the shop and flips `profiles.role` via a `register_beta_vendor_instant()`
+  SECURITY DEFINER RPC (`0021_beta_instant_activation.sql` — **still unapplied, same as `0020`, run
+  both in order**), then redirects straight into the real Add Listing wizard
+  (`/vendor/listings/add?beta=welcome`) to create their first listing — no dashboard stop, no
+  bulk-photo-upload step. An earlier same-day pass had built a "3–10 starter photos auto-convert to
+  draft listings" mechanism (`beta_starter_items` table, a `beta-starter-photos` bucket, wizard
+  pre-fill support) before the reference images were checked against it; since neither migration had
+  been applied yet, that mechanism was removed outright rather than patched — `git checkout --` on
+  the untouched files it had modified, the RPC simplified back to create-shop-and-flip-role only.
+  Google Sign-In was enabled for real as part of this work (see the Google OAuth line below) —
+  `/beta/signup` accepts either Google or magic-link, matching the app's one-shared-auth-flow
+  convention, so step 1 has no inline Google button unlike the reference image. **Not yet verified
+  end-to-end** — blocked on both migrations landing; do the full walk (register through all 3 steps
+  → land on `/vendor/listings/add?beta=welcome` → complete and publish a real listing) once applied.
 - **Phase 4** — `/vendor/auctions/create` is a standalone form; fold it into the Add Listing wizard
   as its Sale Type branch. Deferred originally only because the wizard didn't exist yet when Auctions
   was built — the shape was always intended to converge.
@@ -981,6 +1109,21 @@ it.
 
 ### Cross-cutting — not owned by any single phase
 
+- **Pikachu loading animation** — new, 2026-08-13. A pixel-art sprite-sheet loading indicator
+  (`REFERENCE IMAGES/pikachuanimation.png`, 4×3 grid of 12 documentation-style frames) meant to
+  replace generic spinners across async actions site-wide. Built via the separate Remotion project
+  at `D:\CODING\remotion` (`src/pikachu/`): a "pending" loop (frames 1-10, ~7.5fps stepped) and a
+  one-shot "complete" clip (frames 11-12, held on 12), rendered to WebM and copied into
+  `public/loading/`. The source sheet has documentation chrome baked in (numbered badges, captions,
+  a flattened card background) — cropped out per-frame rather than attempting true alpha
+  transparency, which a flattened source would need real per-frame background removal for; the web
+  loading modal's background matches the sheet's own sampled page color (`#F8FAFC`) instead so the
+  card frame reads as intentional. Wired into one flow only, per explicit scope decision: beta
+  signup, via a new `src/components/shared/LoadingIndicator.tsx` (progress bar is real data when the
+  caller has it, an indeterminate CSS sweep otherwise — most Server Action submits, including this
+  one, only expose a pending boolean, not a percentage). **Not yet wired anywhere else** — Add
+  Listing, Trade, and checkout (once Xendit exists) are explicit future integration points, not done
+  here.
 - ~~**Deployment**~~ — **done 2026-08-11.** Live at **https://pokecard-ph.vercel.app** (Vercel
   project `vince-tamis/pokecard-ph`), serving real Supabase data from serverless with middleware and
   auth redirects working. Operational detail now lives in
@@ -1007,16 +1150,63 @@ it.
   `https://github.com/vinsu-hub/pokecardph.git`; `master` pushed and tracking, 45 commits landed.
   Deploys still go via `vercel deploy` directly, not git — pushing to GitHub doesn't itself trigger
   a deploy on this project.
-- **Google OAuth.** Deferred by explicit request. Needs the Google Cloud Console step (consent
-  screen + redirect URIs registered separately for localhost, preview, and production — registering
-  only production is the classic failure) before the already-built, already-disabled button can be
-  turned on. No schema or policy change needed on this end; RLS already keys off `auth.uid()`
-  regardless of how it's populated.
+- **Google OAuth.** Code-enabled 2026-08-13 — `src/app/(auth)/login/page.tsx`'s button now calls
+  `signInWithOAuth({provider:"google"})` instead of rendering disabled, driven by the beta
+  instant-activation spec leading with "Sign in with Google." A second, separate disabled Google
+  button was found and fixed the same day on the marketing landing page (`src/app/page.tsx`,
+  missed in the first pass) — now `src/components/shared/LandingGoogleButton.tsx`, same
+  `signInWithOAuth` call, defaulting `next=/browse`. **⚠️ Still needs the operator-side
+  steps before it actually works**: the Google Cloud Console consent screen + OAuth client, and the
+  Supabase Auth provider toggle + redirect URLs registered separately for localhost, preview, and
+  production (registering only production is the classic failure). No schema or policy change
+  needed on this end; RLS already keys off `auth.uid()` regardless of how it's populated. Until the
+  Console/Supabase steps are done, both buttons will error on click rather than sit safely disabled —
+  worth doing before this ships to production.
+- **Landing page featured cards + demo-data consolidation.** Done 2026-08-13. The marketing landing
+  page's "For Sale"/"For Trade" strip (`src/app/page.tsx`, `FEATURED_COUNT = 5`) now sorts real
+  photography ahead of sales/newest ranking, landing-page-only — `/browse` and `/search` are
+  untouched. Confirmed exactly 5 cards currently have real photography (Mew ex, Umbreon VMAX,
+  Leafeon VSTAR, Gengar VMAX, Rayquaza EX), previously split across Card Haven PH and Foil & Flame
+  Cards; their listings were reassigned via direct `shop_id` PATCH (service-role REST, no DB
+  password needed) so all 5 now live under one shop — **Foil & Flame Cards**, chosen because it's
+  already tied to the site's admin/test login (`foilandflame@pokecard.test`). Deliberately
+  untouched: Card Haven PH's and PokeVault PH's other listings/vendor accounts, and — found during
+  this session's inventory — **a real shop (SandX) and 6 real personal-email buyer accounts that
+  signed up on the live site 2026-08-12/13**, genuine people rather than test fixtures. The
+  accumulated `.dev/journey.mjs` test-run order debris (47 orders, mostly `pending`) flagged in the
+  Seed register item below is still outstanding — this pass didn't touch it, staying scoped to
+  cards/shops only as asked.
 - **Xendit.** Not provisioned (`XENDIT_SECRET_KEY` empty) — and, confirmed 2026-08-12, no code
   anywhere reads that variable at runtime, so this isn't "ready code waiting on a credential," it's
   no integration code at all yet. `/api/webhooks/xendit`, listed in this document's own cross-phase
   reference table below, doesn't exist. Checkout and billing both stop at `pending`/no payable link,
   and the UI says so rather than implying a working payment path.
+  **Design constraint, confirmed 2026-08-13** against the updated business model
+  (`buisness context\PokeCard_PH_Business_Model_Updated.docx` §4, "Payment Architecture —
+  Subscription-Only, No Held Funds"): the platform must never collect or hold buyer payments.
+  Buyer→Vendor checkout has to pay the **vendor's own** Xendit-linked account directly; Vendor→
+  Platform is a fully separate monthly subscription invoice (which is already how Phase 5's
+  `vendor_monthly_billing`/Xendit-invoice design works — only the buyer-facing checkout side needs
+  this constraint applied when it's finally built). Apply this before writing any Phase 1 checkout
+  code — there's no existing implementation to unwind yet, so this is a clean starting constraint,
+  not a rework.
+- **News Feed tab.** Net-new scope, confirmed 2026-08-13 against the updated business model §8 — a
+  buyer-facing tab, separate from the Events (Who's That Pokémon) tab, surfacing admin-curated posts
+  plus organizer-submitted convention/meetup listings under a moderation workflow, with a
+  "sponsored placement" revenue line in the same doc's §5. Absent from every existing phase spec,
+  the phase ladder above, and the codebase (`grep`-confirmed zero hits). Needs a real spec doc
+  before it can be scheduled as a phase.
+- **Full Condition Scan monetization.** The two-tier scan model (Flat required / Full optional) is
+  fully built (Phase 7-rev's `scan_tier` work) and matches the updated business model's description
+  exactly — but that doc frames choosing the Full upgrade as a **paid** action ("verified/full
+  condition scan fee... per listing, opt-in," §5). No payment gate exists on that choice today;
+  flagging so it isn't lost once Xendit checkout exists to build it against.
+- **Stale business-model doc pointer.** `AGENTS.md` and this document both cite
+  `CONTEXT/POKECARD_PH_BUSINESS_MODEL.md` as the canonical business model spec. As of 2026-08-13 the
+  real current version is `buisness context\PokeCard_PH_Business_Model_Updated.docx` (subscription-
+  only payment architecture, News Feed tab, two-track vendor trials, weekly event cadence — none of
+  which are in the `CONTEXT/` copy). Update the source-of-truth reference, or copy the updated
+  document into `CONTEXT/`, so a future session doesn't work from the outdated one.
 
 ### Open product decisions
 
