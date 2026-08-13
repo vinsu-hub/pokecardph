@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEdgeScroll } from "@/lib/use-edge-scroll";
 
 /**
  * Generic chevron-paging wrapper around a horizontally-scrolling row —
  * content-agnostic, no card/shelf knowledge. Deliberately not built on the
  * storefront's `Shelf` (`src/app/shops/[shopId]/page.tsx`): that component
  * is private, storefront-prop-specific, and carries decorative 3D-ledge CSS
- * this page doesn't want. Arrows hide at each scroll extreme rather than
- * disable, so there's no dead-looking control sitting in the row.
+ * this page doesn't want — though its edge-scroll math is shared via
+ * `useEdgeScroll` so the two can't drift. Arrows hide at each scroll extreme
+ * rather than disable, so there's no dead-looking control sitting in the row.
  */
 export function HorizontalScroller({
   children,
@@ -19,31 +20,7 @@ export function HorizontalScroller({
   children: React.ReactNode;
   className?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [atStart, setAtStart] = useState(true);
-  const [atEnd, setAtEnd] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const update = () => {
-      setAtStart(el.scrollLeft <= 0);
-      setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 1);
-    };
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      el.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, []);
-
-  function scrollByAmount(dir: 1 | -1) {
-    const el = ref.current;
-    if (!el) return;
-    el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: "smooth" });
-  }
+  const { ref, atStart, atEnd, scrollByAmount } = useEdgeScroll<HTMLDivElement>();
 
   return (
     <div className="relative">

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { ShieldCheck, Lock, Truck, BadgeCheck, HelpCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser, shellUser } from "@/lib/auth";
@@ -19,7 +19,7 @@ import { CardDetailsGrid } from "@/components/buyer/CardDetailsGrid";
 import { MarketPrice } from "@/components/buyer/MarketPrice";
 import { TradeThisCard } from "@/components/buyer/TradeThisCard";
 import { SimilarListingsShelf } from "@/components/buyer/SimilarListingsShelf";
-import { StatusPill } from "@/components/shared/StatusPill";
+import { ShopInfoCard } from "@/components/buyer/ShopInfoCard";
 
 /**
  * Card Detail (2D).
@@ -38,6 +38,26 @@ import { StatusPill } from "@/components/shared/StatusPill";
  */
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("listings")
+    .select("cards(name, set_name)")
+    .eq("id", id)
+    .maybeSingle();
+  const card = (data as unknown as { cards: { name: string; set_name: string } | null } | null)?.cards;
+  if (!card) return { title: "Card — PokeCard PH" };
+  return {
+    title: `${card.name} — PokeCard PH`,
+    description: `${card.name} (${card.set_name}) — buy, sell, and trade Pokémon cards on PokeCard PH.`,
+  };
+}
 
 export default async function CardDetailPage({
   params,
@@ -64,12 +84,6 @@ export default async function CardDetailPage({
   // let every section below assume `card` is always populated.
   if (!card || !shop) notFound();
 
-  const shopInitials = shop.name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((s) => s[0]?.toUpperCase() ?? "")
-    .join("");
-
   return (
     <AppShell user={shellUser(user)} cartCount={cartCount}>
       <nav className="mb-4 text-caption text-text-secondary">
@@ -80,7 +94,7 @@ export default async function CardDetailPage({
         <span className="text-text-primary">{card.name}</span>
       </nav>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         {/* ---------------- Image panel + left-column sections ---------------- */}
         <div>
           <div className="flex gap-2">
@@ -152,51 +166,7 @@ export default async function CardDetailPage({
             </ul>
           </div>
 
-          <div className="rounded-lg border border-border bg-bg p-(--card-pad)">
-            <div className="flex items-center gap-3">
-              {shop.logo_url ? (
-                <Image
-                  src={shop.logo_url}
-                  alt={shop.name}
-                  width={36}
-                  height={36}
-                  className="size-9 shrink-0 rounded-full object-cover"
-                />
-              ) : (
-                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary-subtle text-caption font-medium text-primary">
-                  {shopInitials}
-                </span>
-              )}
-              <div className="min-w-0">
-                <h2 className="truncate text-h3 font-semibold">{shop.name}</h2>
-                <p className="text-caption text-text-secondary">
-                  ★ {shop.rating} ({shop.review_count}) · {shop.location}
-                </p>
-              </div>
-            </div>
-            {(shop.tier === "premium" || shop.is_beta_vendor) && (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {shop.tier === "premium" && <StatusPill tone="paid">Premium Shop</StatusPill>}
-                {shop.is_beta_vendor && <StatusPill tone="attention">Founding Vendor</StatusPill>}
-              </div>
-            )}
-
-            {shop.description && (
-              <div className="mt-3 border-t border-border pt-3">
-                <h3 className="text-caption font-medium text-text-secondary">
-                  About {shop.name}
-                </h3>
-                <p className="mt-1 text-body text-text-secondary">{shop.description}</p>
-              </div>
-            )}
-
-            <Link
-              href={`/shops/${shop.id}`}
-              className="mt-3 flex h-11 items-center justify-center rounded-md border border-primary text-body font-medium text-primary transition-colors duration-(--duration-instant) hover:bg-primary-subtle"
-            >
-              Visit Store
-            </Link>
-          </div>
+          <ShopInfoCard shop={shop} />
 
           <div className="rounded-lg border border-border bg-bg p-(--card-pad)">
             <div className="flex items-start gap-2">

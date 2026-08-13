@@ -216,18 +216,47 @@ body {
 }
 
 @media (width >= 640px) {
+  /* The rotated row's visual bounding box can bleed a little past its own
+     layout box (a known quirk of 3D-transformed content inside a scroll
+     container) — clip it here so that never leaks into page-level
+     horizontal scroll. overflow-y stays explicit: setting only overflow-x
+     would otherwise silently promote overflow-y to `auto` per spec, which
+     would clip the intentional vertical hover-lift. */
   .shelf {
-    perspective: 1400px;
-    perspective-origin: 50% 120%;
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+}
+
+@media (width >= 640px) {
+  .shelf {
+    /* Tighter than before (was 1400px) — more dramatic foreshortening reads
+       as a real angled shelf rather than a barely-tilted floor. */
+    perspective: 950px;
+    /* Off-center vanishing point (was 50% 120%) — dead-center perspective
+       reads as "viewed straight on," an off-side origin reads as "viewed at
+       an angle," which is most of what makes this isometric rather than flat. */
+    perspective-origin: 15% 110%;
   }
 
-  /* The plane the cards stand on. Tilted away from the viewer, with a light
-     front edge so it reads as a solid board rather than a shadow. */
+  /* The row's own plane rotation — rotateX alone (the old behavior) only
+     tilts front-to-back and can't foreshorten along the row; rotateY is what
+     makes cards further along the row visibly recede toward the vanishing
+     point. preserve-3d so the row and its items compose one 3D scene rather
+     than each flattening independently. */
+  .shelf-row {
+    transform-style: preserve-3d;
+    transform: rotateX(10deg) rotateY(-14deg);
+  }
+
+  /* The plane the cards stand on. Carries the same rotateY as .shelf-row so
+     the ledge and the row of cards read as one coherent tilted surface
+     instead of a square-on floor with sideways-skewed objects sitting on it. */
   .shelf-plane {
     position: absolute;
     inset: auto 0 0 0;
     height: var(--shelf-depth);
-    transform: rotateX(62deg);
+    transform: rotateY(-14deg) rotateX(62deg);
     transform-origin: 50% 0;
     background: linear-gradient(
       180deg,
@@ -241,9 +270,16 @@ body {
     pointer-events: none;
   }
 
-  /* Cards sit slightly forward of the plane and lift on hover. */
+  /* Cards sit slightly forward of the plane and lift on hover. rotateY(6deg)
+     is a deliberate PARTIAL counter-rotation against the row's -14deg (not a
+     full +14deg cancel) — leaving ~8deg net lean so each card reads as
+     "standing in its slot on an angled shelf" rather than a flat cutout
+     pasted onto an obviously-rotated row. Contained for perf: fixed widths
+     already set on .shelf-item elsewhere, so this is a safe, cheap boundary
+     for off-screen cards in a shop with 300+ listings. */
   .shelf-item {
-    transform: translateZ(var(--shelf-lip));
+    transform: translateZ(var(--shelf-lip)) rotateY(6deg);
+    contain: layout paint style;
   }
 }
 
@@ -252,7 +288,7 @@ body {
     transition: transform var(--duration-fast) var(--ease-out-soft);
   }
   .shelf-item:hover {
-    transform: translateZ(calc(var(--shelf-lip) + 8px)) translateY(-2px);
+    transform: translateZ(calc(var(--shelf-lip) + 8px)) translateY(-2px) rotateY(6deg);
   }
 
   /* Contact shadow — sells the card as resting ON the shelf. Sized to the
@@ -299,6 +335,14 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* LoadingIndicator's progress bar when no real percentage is known yet — a
+   sweeping segment rather than a static half-filled bar, so it still reads
+   as "something is happening" without claiming a number that isn't real. */
+@keyframes loading-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
 }
 
 /* ============================================================================

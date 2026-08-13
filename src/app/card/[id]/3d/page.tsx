@@ -9,6 +9,7 @@ import { addToCart } from "@/lib/cart-actions";
 import { php } from "@/lib/utils";
 import { conditionLabel, type ListingCard } from "@/lib/supabase/types";
 import { primaryPhoto, testBackFor, testNormalMapFor } from "@/lib/photos";
+import { ShopInfoCard } from "@/components/buyer/ShopInfoCard";
 
 /**
  * 3D Inspection.
@@ -123,11 +124,9 @@ export default async function Inspect3DPage({
             >
               Trade for This Card
             </Link>
-            <p className="mt-3 text-caption text-text-secondary">
-              Sold by <span className="font-medium text-text-primary">{shop.name}</span>
-              {" · "}★ {shop.rating}
-            </p>
           </section>
+
+          <ShopInfoCard shop={shop} />
 
           {!albedo && (
             <p className="rounded-md bg-attention-bg px-3 py-2 text-caption text-attention">

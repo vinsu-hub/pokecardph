@@ -28,7 +28,7 @@ export function CardImageGallery({ listing }: { listing: ListingCard }) {
 
   if (available.length === 0) {
     return (
-      <div className="relative mt-3 mx-auto aspect-[5/7] max-h-[560px] w-fit overflow-hidden rounded-lg border border-border">
+      <div className="relative mt-3 mx-auto aspect-[5/7] w-full max-w-[400px] max-h-[560px] overflow-hidden rounded-lg border border-border">
         {hero}
         <CardArt name={card.name} src={null} priority sizes="(min-width: 1024px) 40vw, 90vw" />
       </div>
@@ -43,7 +43,7 @@ export function CardImageGallery({ listing }: { listing: ListingCard }) {
 
   return (
     <div>
-      <div className="relative mt-3 mx-auto aspect-[5/7] max-h-[560px] w-fit overflow-hidden rounded-lg border border-border">
+      <div className="relative mt-3 mx-auto aspect-[5/7] w-full max-w-[400px] max-h-[560px] overflow-hidden rounded-lg border border-border">
         {hero}
         <CardArt
           name={`${card.name} — ${active.label}`}
