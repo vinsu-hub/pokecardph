@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth";
 import { LandingHeader } from "@/components/shared/LandingHeader";
 import { LandingPreview, type PreviewCard } from "@/components/shared/LandingPreview";
-import { GoogleMark } from "@/components/shared/GoogleMark";
+import { LandingGoogleButton } from "@/components/shared/LandingGoogleButton";
 import { primaryPhoto } from "@/lib/photos";
 import type { Card, Listing, Shop } from "@/lib/supabase/types";
 
@@ -84,10 +84,17 @@ export default async function LandingPage({
 
   const saleCandidates = ((saleRows ?? []) as unknown as SaleRow[]).filter((l) => l.cards && l.shops);
 
-  /** Best-selling first, ties broken by newest, so the ranking is never
-   *  arbitrary even before real sales volume exists — it degrades gracefully
-   *  to "newest" rather than to an undefined sort order. */
+  /** Real photography first — a marketing showcase risking a gradient/text
+   *  placeholder tile looks unfinished, so cards with real image_url sort
+   *  ahead of everything else here. This is landing-page-only bias: /browse
+   *  and /search keep ranking purely by the sales data below, untouched.
+   *  Within each group, best-selling first, ties broken by newest, so the
+   *  ranking is never arbitrary even before real sales volume exists — it
+   *  degrades gracefully to "newest" rather than to an undefined sort order. */
   const bestSelling = [...saleCandidates].sort((a, b) => {
+    const hasImage = (l: SaleRow) => (l.cards!.image_url ? 1 : 0);
+    const img = hasImage(b) - hasImage(a);
+    if (img !== 0) return img;
     const sold = (salesByCard.get(b.card_id ?? "") ?? 0) - (salesByCard.get(a.card_id ?? "") ?? 0);
     if (sold !== 0) return sold;
     return +new Date(b.created_at) - +new Date(a.created_at);
@@ -139,7 +146,7 @@ export default async function LandingPage({
         <div className="flex min-w-0 flex-col justify-center px-(--gutter) py-10 lg:py-16">
           <div className="mx-auto w-full max-w-[560px]">
             <h1 className="text-display font-bold" style={{ fontSize: "clamp(2.25rem, 4vw, 3rem)", lineHeight: 1.1 }}>
-              Collect. Trade. Battle. <span className="text-primary">Connect.</span>
+              Collect. Trade. <span className="text-primary">Connect.</span>
             </h1>
             <p className="mt-3 text-body text-text-secondary">
               The trusted marketplace for Pokémon cards and collectibles in the Philippines.
@@ -153,15 +160,7 @@ export default async function LandingPage({
               Join thousands of trainers and collectors today!
             </p>
 
-            <button
-              type="button"
-              disabled
-              title="Google Sign-In is coming soon"
-              className="mt-3 flex h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-bg text-body font-medium opacity-50"
-            >
-              <GoogleMark />
-              Continue with Google
-            </button>
+            <LandingGoogleButton />
 
             <div className="my-4 flex items-center gap-3">
               <span className="h-px flex-1 bg-border" />
@@ -194,12 +193,18 @@ export default async function LandingPage({
 
         {/* ---- Right: hero photo ---- */}
         <div className="relative hidden min-h-[420px] lg:block">
+          {/* unoptimized: this is a single pre-encoded static asset (already
+              WebP, already at its full native resolution), not user content —
+              skipping Next's own resize/recompress pipeline guarantees the
+              exact file on disk is what ships, with no risk of a smaller
+              width bucket getting served on a large viewport and reading as
+              soft/blurry. */}
           <Image
             src="/brand/landing-hero.webp"
             alt=""
             fill
             priority
-            sizes="50vw"
+            unoptimized
             className="object-cover"
           />
           {/* Reference: MAIN LANDING PAGE.png — the photo isn't a hard-edged
