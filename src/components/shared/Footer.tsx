@@ -23,7 +23,7 @@ const COLUMNS: [string, [string, string, boolean?][]][] = [
   ]],
   ["Company", [
     ["About Us", "/about", true],
-    ["How It Works", "/how-it-works", true],
+    ["How It Works", "/how-it-works"],
     ["Terms of Service", "/terms", true],
     ["Privacy Policy", "/privacy", true],
   ]],

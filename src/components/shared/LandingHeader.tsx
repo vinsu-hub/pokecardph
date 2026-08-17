@@ -9,12 +9,11 @@ import { Logo } from "./Logo";
  * simpler, always-desktop-style nav for a page whose entire job is getting a
  * visitor to Sign Up or Log In, not navigating a marketplace.
  */
-// "How It Works" and "Help" have no page behind them yet — no spec, no
-// content. Rendered inert with a reason, same rule Footer.tsx applies to
-// every not-yet-built link, rather than pointing them at /browse as a fake
-// stand-in.
+// "Help" has no page behind it yet — no spec, no content. Rendered inert
+// with a reason, same rule Footer.tsx applies to every not-yet-built link,
+// rather than pointing it at /browse as a fake stand-in.
 const LINKS: [string, string | null][] = [
-  ["How It Works", null],
+  ["How It Works", "/how-it-works"],
   ["Explore", "/browse"],
   ["Become a Seller", "/vendor/onboarding"],
   ["Help", null],
