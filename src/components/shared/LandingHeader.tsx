@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Logo } from "./Logo";
 
 /**
@@ -7,7 +10,11 @@ import { Logo } from "./Logo";
  * Deliberately not AppShell — that's the buyer/vendor app's tab-bar system
  * (Home/Trade/Events/Orders, mobile bottom bar, cart badge). This is a
  * simpler, always-desktop-style nav for a page whose entire job is getting a
- * visitor to Sign Up or Log In, not navigating a marketplace.
+ * visitor to Sign Up or Log In, not navigating a marketplace. Still shares
+ * AppShell's active-link convention (text-primary + aria-current), since
+ * this header now renders across three marketing pages (/, /beta,
+ * /how-it-works) and silently identical links regardless of page was a real
+ * gap, not a stylistic difference from AppShell worth keeping.
  */
 // "Help" has no page behind it yet — no spec, no content. Rendered inert
 // with a reason, same rule Footer.tsx applies to every not-yet-built link,
@@ -20,6 +27,9 @@ const LINKS: [string, string | null][] = [
 ];
 
 export function LandingHeader() {
+  const pathname = usePathname();
+  const isActive = (href: string) => pathname.startsWith(href);
+
   return (
     <header className="border-b border-border bg-bg">
       <div className="mx-auto flex h-16 max-w-(--page-max) items-center justify-between px-(--gutter)">
@@ -30,7 +40,12 @@ export function LandingHeader() {
               <Link
                 key={label}
                 href={href}
-                className="text-body text-text-secondary transition-colors duration-(--duration-instant) hover:text-text-primary"
+                aria-current={isActive(href) ? "page" : undefined}
+                className={
+                  isActive(href)
+                    ? "text-body font-medium text-primary"
+                    : "text-body text-text-secondary transition-colors duration-(--duration-instant) hover:text-text-primary"
+                }
               >
                 {label}
               </Link>
