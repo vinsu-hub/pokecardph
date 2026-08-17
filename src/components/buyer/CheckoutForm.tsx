@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import { php } from "@/lib/utils";
 import { SubmitButton } from "@/components/shared/SubmitButton";
+import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 
 /**
  * 4-step checkout: Review Cart → Delivery → Payment → Confirm.
@@ -149,6 +151,8 @@ export function CheckoutForm({
               </SubmitButton>
             )}
           </div>
+
+          <CheckoutPendingOverlay />
         </div>
 
         <aside className="rounded-lg border border-border bg-bg p-(--card-pad) lg:sticky lg:top-24 lg:self-start">
@@ -165,6 +169,23 @@ export function CheckoutForm({
         </aside>
       </form>
     </>
+  );
+}
+
+/**
+ * `useFormStatus()` only reflects the nearest ancestor `<form>`'s status when
+ * called from a descendant, not from the component that renders the form
+ * itself — same reason `BetaSignupForm.tsx` splits this out. `placeOrder`
+ * redirects to the order confirmation page on success, so there's no in-page
+ * "success" moment to show here.
+ */
+function CheckoutPendingOverlay() {
+  const { pending } = useFormStatus();
+  return (
+    <LoadingIndicator
+      state={pending ? "pending" : "idle"}
+      pendingLabel="Processing your transaction…"
+    />
   );
 }
 

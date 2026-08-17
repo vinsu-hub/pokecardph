@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useFormStatus } from "react-dom";
 import { Plus, RefreshCw, Scale, X } from "lucide-react";
 import { SlideOver } from "@/components/shared/SlideOver";
+import { SubmitButton } from "@/components/shared/SubmitButton";
+import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
 import { CardArt } from "@/components/buyer/CardArt";
 import { proposeTrade } from "@/app/trade/actions";
 import { php } from "@/lib/utils";
@@ -213,9 +216,13 @@ export function TradeBuilder({
         <form action={proposeTrade} className="mt-4">
           {offerIds.map((id) => <input key={id} type="hidden" name="offered" value={id} />)}
           {wantIds.map((id) => <input key={id} type="hidden" name="wanted" value={id} />)}
-          <button className="h-11 w-full rounded-md bg-primary text-body font-medium text-white active:scale-[0.98]">
+          <SubmitButton
+            pendingLabel="Submitting…"
+            className="h-11 w-full rounded-md bg-primary text-body font-medium text-white"
+          >
             Submit Trade Proposal
-          </button>
+          </SubmitButton>
+          <TradePendingOverlay />
         </form>
       )}
 
@@ -282,5 +289,22 @@ export function TradeBuilder({
         </form>
       </SlideOver>
     </section>
+  );
+}
+
+/**
+ * `useFormStatus()` only reflects the nearest ancestor `<form>`'s status when
+ * called from a descendant, not from the component that renders the form —
+ * same pattern as `BetaSignupForm.tsx`/`CheckoutForm.tsx`. `proposeTrade`
+ * redirects to `/trade/[tradeId]` on success, so no in-page "success" state
+ * is needed here.
+ */
+function TradePendingOverlay() {
+  const { pending } = useFormStatus();
+  return (
+    <LoadingIndicator
+      state={pending ? "pending" : "idle"}
+      pendingLabel="Processing your trade…"
+    />
   );
 }
