@@ -42,7 +42,7 @@ export function LoadingIndicator({
       role="status"
       aria-live="polite"
     >
-      <div aria-hidden className="absolute inset-0 bg-text-primary/40" />
+      <div aria-hidden className="absolute inset-0 backdrop-blur-md bg-text-primary/10" />
       <div
         className="relative flex w-full max-w-[320px] flex-col items-center gap-4 rounded-lg p-6 shadow-elevated"
         style={{ backgroundColor: "#F8FAFC" }}
