@@ -1032,6 +1032,43 @@ producing a flaky false read of the DB mid-flight. Fixed by matching on exact pa
 
 ---
 
+## Phase 16 — Vendor Shop Settings (logout, shop editing, Premium showcase)
+
+**Status:** ✅ Built, verified end-to-end against the dev DB (non-destructively — the test script
+restores the shop's original details every run), re-verified live via Playwright 2026-08-17
+(settings sections render, save round-trip persists and restores, nav link enabled). Committed
+2026-08-17. **Deploy to production pending** (bundled with Phase 17, see below).
+
+`VendorShell.tsx`'s nav had reserved a "Shop Settings" slot, permanently disabled since it was
+built ("Shop settings arrive in a later release"). This phase builds the page it already pointed
+at, `src/app/vendor/settings/page.tsx` (new) — enabling the nav item is a one-line change
+(`VendorShell.tsx`, drop `disabled`/`note` from that entry).
+
+Three sections: **Edit Shop Details** (name/location/description, plus logo and banner upload via
+the existing `<ImageUpload>` component — `banner_url` had sat unused in `shops` since
+`0006_vendor.sql`, this is its first consumer) — a genuinely new Server Action, since no shop-update
+path existed anywhere before this (`shops_vendor_write` RLS already permitted it, just nothing
+called it); **What Premium unlocks**, a static "Coming Soon" showcase of the six vendor-relevant
+revenue streams from `PokeCard_PH_Business_Model_Updated.docx` (featured/boosted listings, priority
+auction slotting, verified condition scan, protected trade, News Feed sponsored listing, sponsored
+search) — confirmed with the user as informational only, since investigation found **none of the six
+have any implementation** (`PHASE5_MONETIZATION.md` itself excludes them: "Do not build sponsored
+search, ads, or the featured-listing purchase flow yet"), so this deliberately doesn't invent
+functionality or silently drop what was asked for; and **Account**, a Sign Out control reusing the
+buyer-side pattern verbatim (`AppShell.tsx`'s plain `<form action="/auth/signout">`) — the vendor
+side had no sign-out anywhere before this.
+
+**One real bug caught during verification, not assumed away**: the "Save Changes" button submits
+the same form the wizard sits on for both the text-only save and the logo/banner-upload save; the
+test script's second `waitForURL` check for `?saved=1` resolved instantly because the page was
+*already* on that URL from the first save, so it read the database before the second submission
+had actually committed. Not an app bug — fixed in the test script by waiting on the actual POST
+response instead of a URL that was already true. Also caught and fixed a real layout bug in the
+process: wrapping a single-slot `<ImageUpload>` in a `max-w-[140px]` div crushed its internal
+`sm:grid-cols-4` layout into ~35px slivers — removed the width cap entirely.
+
+---
+
 ## Deferred — not part of this effort
 
 **Native mobile app (React Native).** A separate future project with its own session. The website's

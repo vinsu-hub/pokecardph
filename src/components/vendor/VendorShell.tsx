@@ -41,7 +41,7 @@ const NAV: Item[] = [
   { href: "/vendor/auctions", label: "Auctions" },
   { href: "/vendor/events", label: "Events" },
   { href: "/vendor/billing", label: "Billing" },
-  { href: "/vendor/settings", label: "Shop Settings", disabled: true, note: "Shop settings arrive in a later release" },
+  { href: "/vendor/settings", label: "Shop Settings" },
 ];
 
 export function VendorShell({
