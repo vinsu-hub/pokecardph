@@ -429,6 +429,50 @@ body {
   100% { transform: translateX(250%); }
 }
 
+/* Root-level View Transition (enabled by the <ViewTransition> wrapper in
+   layout.tsx) — the browser's own snapshot of the page being navigated
+   away from, blurred, so the Pikachu overlay in loading.tsx's opening
+   instant dissolves out of a real blurred previous page instead of
+   appearing over blank space. `::view-transition-old(root)` /
+   `::view-transition-new(root)` only exist while a transition is running;
+   these rules are inert the rest of the time.
+
+   `::view-transition-new(root)` (the incoming Pikachu overlay) is stacked
+   *above* `::view-transition-old(root)` in the browser's compositing, so it
+   has to fade in over roughly the same duration as old fades out — left at
+   the browser's own fast default, new reaches full opacity in ~250ms and
+   visually covers the blurred old snapshot underneath for the remainder of
+   old's own (longer) fade, regardless of old's own opacity. Confirmed by
+   screenshotting the actual transition: matching durations were required
+   before the blur became visible at all.
+
+   This can only cover the *opening instant* of a route change, not an
+   entire real network fetch — confirmed by instrumenting
+   `document.startViewTransition` directly, a route change is a *chain* of
+   transitions (old page → fallback, then each further Suspense reveal on
+   the way to real content), each with its own brief crossfade. 550ms is
+   deliberately off the discrete-interaction duration scale — same
+   exception category as `--duration-marquee` above — long enough to read
+   as a real dissolve rather than a flicker, short enough that Pikachu is
+   fully opaque well before a typical fetch finishes. */
+::view-transition-old(root) {
+  filter: blur(12px);
+  animation-duration: 550ms;
+  animation-timing-function: var(--ease-in-soft);
+}
+
+::view-transition-new(root) {
+  animation-duration: 550ms;
+  animation-timing-function: var(--ease-out-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0s !important;
+  }
+}
+
 /* ============================================================================
    Events — the reveal moment
    The 800ms cross-dissolve lives in the component (it needs to be paired with
