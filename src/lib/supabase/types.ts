@@ -116,3 +116,31 @@ export function conditionLabel(l: Pick<Listing, "listing_type" | "grading_compan
   }
   return "Non-Graded";
 }
+
+/** A buyer's own tradeable card — `trade_cards`, added by
+ *  0003_trades.sql. Distinct from `Listing`: it belongs to a person, not a
+ *  shop, and has no `listing_type`/`sale_type`/pricing columns of its own. */
+export type TradeCard = {
+  id: string;
+  owner_id: string;
+  card_id: string;
+  condition: string | null;
+  grading_company: string | null;
+  grade: string | null;
+  estimated_value: number | null;
+  photos: unknown;
+  status: "available" | "pending_trade" | "traded";
+  created_at: string;
+};
+
+export type TradeCardWithCard = TradeCard & { cards: Card };
+
+/** Same recognition pattern as `conditionLabel`, for `trade_cards` rows —
+ *  which have no `listing_type` to key off, just a graded/non-graded pair of
+ *  columns plus a free-text `condition` (e.g. "NM") for ungraded cards. */
+export function tradeCardConditionLabel(
+  c: Pick<TradeCard, "grading_company" | "grade" | "condition">,
+) {
+  if (c.grading_company && c.grade) return `${c.grading_company} ${c.grade}`;
+  return c.condition || "Non-Graded";
+}

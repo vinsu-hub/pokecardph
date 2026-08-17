@@ -4,6 +4,7 @@ import Link from "next/link";
 import { php } from "@/lib/utils";
 import { conditionLabel, type ListingCard } from "@/lib/supabase/types";
 import { play } from "@/lib/audio";
+import { VerifiedMark } from "@/components/shared/VerifiedMark";
 import { CardArt } from "./CardArt";
 
 /**
@@ -51,13 +52,5 @@ export function ListingCardTile({ listing }: { listing: ListingCard }) {
         </p>
       </div>
     </Link>
-  );
-}
-
-function VerifiedMark() {
-  return (
-    <svg viewBox="0 0 20 20" className="size-3.5 shrink-0 fill-primary" aria-label="Verified vendor">
-      <path d="M10 1.5l2.2 1.6 2.7-.2.9 2.6 2.2 1.6-1 2.6 1 2.6-2.2 1.6-.9 2.6-2.7-.2L10 18.5l-2.2-1.6-2.7.2-.9-2.6L2 12.9l1-2.6-1-2.6 2.2-1.6.9-2.6 2.7.2L10 1.5zm-.8 11.4l4.6-4.6-1.2-1.2-3.4 3.4-1.6-1.6-1.2 1.2 2.8 2.8z" />
-    </svg>
   );
 }

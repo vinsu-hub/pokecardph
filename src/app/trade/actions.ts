@@ -217,6 +217,12 @@ export async function removeTradeCard(formData: FormData) {
 /**
  * Create a proposal: the trade, both sides of trade_items, the opening
  * activity row, and the hold on the proposer's cards.
+ *
+ * "wanted" can be one or more listing ids (the You Want column supports
+ * multiple cards, per the Phase 3 spec) — but a trade has exactly one
+ * shop_id column, so every requested listing must belong to the same shop.
+ * Rejected with a clear error rather than silently dropping the others or
+ * splitting into multiple trades.
  */
 export async function proposeTrade(formData: FormData) {
   const user = await getSessionUser();
@@ -224,15 +230,22 @@ export async function proposeTrade(formData: FormData) {
   const supabase = await createClient();
 
   const offered = formData.getAll("offered").map(String).filter(Boolean);
-  const wantedListingId = String(formData.get("wanted") ?? "");
-  if (!offered.length || !wantedListingId) throw new Error("Pick at least one card on each side");
+  const wantedIds = formData.getAll("wanted").map(String).filter(Boolean);
+  if (!offered.length || !wantedIds.length) throw new Error("Pick at least one card on each side");
 
-  const { data: listing } = await supabase
+  const { data: listings } = await supabase
     .from("listings")
     .select("id, price, shop_id")
-    .eq("id", wantedListingId)
-    .maybeSingle();
-  if (!listing) throw new Error("Listing not found");
+    .in("id", wantedIds);
+  if (!listings || listings.length !== wantedIds.length) {
+    throw new Error("One or more listings were not found");
+  }
+
+  const shopIds = new Set(listings.map((l) => l.shop_id));
+  if (shopIds.size > 1) {
+    throw new Error("All requested cards must be from the same shop to submit one trade proposal.");
+  }
+  const shopId = listings[0].shop_id;
 
   const { data: cards } = await supabase
     .from("trade_cards")
@@ -241,13 +254,14 @@ export async function proposeTrade(formData: FormData) {
     .eq("owner_id", user.id);
 
   const offeredValue = (cards ?? []).reduce((s, c) => s + Number(c.estimated_value ?? 0), 0);
-  const diff = Number(listing.price) - offeredValue;
+  const requestedValue = listings.reduce((s, l) => s + Number(l.price), 0);
+  const diff = requestedValue - offeredValue;
 
   const { data: trade, error } = await supabase
     .from("trades")
     .insert({
       proposer_id: user.id,
-      shop_id: listing.shop_id,
+      shop_id: shopId,
       status: "proposed",
       value_difference: Math.abs(diff),
       value_owed_by: diff === 0 ? null : diff > 0 ? "proposer" : "vendor",
@@ -262,11 +276,11 @@ export async function proposeTrade(formData: FormData) {
       trade_card_id: c.id, listing_id: null,
       estimated_value: Number(c.estimated_value ?? 0),
     })),
-    {
+    ...listings.map((l) => ({
       trade_id: trade.id, side: "requested" as const,
-      trade_card_id: null, listing_id: listing.id,
-      estimated_value: Number(listing.price),
-    },
+      trade_card_id: null, listing_id: l.id,
+      estimated_value: Number(l.price),
+    })),
   ];
   const { error: itemErr } = await supabase.from("trade_items").insert(rows);
   if (itemErr) throw new Error(itemErr.message);
