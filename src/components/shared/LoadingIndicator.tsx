@@ -2,17 +2,17 @@
 
 import { createPortal } from "react-dom";
 import { useIsClient } from "@/lib/use-is-client";
-import { cn } from "@/lib/utils";
 
 /**
  * On-brand replacement for a generic spinner during a real async action —
  * a Pikachu pixel-art loop (rendered via Remotion, see D:\CODING\remotion)
- * instead of plain "Sending…" text. Three states:
+ * instead of plain "Sending…" text, floating over a blurred backdrop with no
+ * card/box chrome of its own. Three states:
  *
  * - "pending": the looping chase/cart-fill clip, plus a real progress bar
- *   if the caller has one (uploads/multi-step flows) — falls back to an
- *   indeterminate sweep when it doesn't (most Server Action submits, which
- *   only expose a pending boolean, not a percentage).
+ *   only when the caller has real percentage data (uploads/multi-step
+ *   flows) — no decorative indeterminate animation when it doesn't, since
+ *   Pikachu's own loop already reads as "in progress" on its own.
  * - "success": the one-shot finish-line clip, then the caller dismisses.
  * - "error": the app's existing danger-styled message pattern — the success
  *   clip never plays on failure, per spec.
@@ -27,7 +27,9 @@ export function LoadingIndicator({
   errorMessage = "Something went wrong — please try again.",
 }: {
   state: "idle" | "pending" | "success" | "error";
-  /** 0-100, real data only — never invented. Omit for an indeterminate bar. */
+  /** 0-100, real data only — never invented. Omit to skip the progress bar
+   *  entirely (most callers — a Server Action's `pending` boolean has no
+   *  real percentage to show). */
   progress?: number;
   pendingLabel?: string;
   successLabel?: string;
@@ -38,15 +40,12 @@ export function LoadingIndicator({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 grid place-items-center px-4"
+      className="fixed inset-0 z-50 isolate grid place-items-center px-4"
       role="status"
       aria-live="polite"
     >
       <div aria-hidden className="absolute inset-0 backdrop-blur-md bg-text-primary/10" />
-      <div
-        className="relative flex w-full max-w-[320px] flex-col items-center gap-4 rounded-lg p-6 shadow-elevated"
-        style={{ backgroundColor: "#F8FAFC" }}
-      >
+      <div className="relative flex w-full max-w-[400px] flex-col items-center gap-4 px-4">
         {state === "error" ? (
           <p className="rounded-md bg-danger-bg px-3 py-2 text-center text-body text-danger">
             {errorMessage}
@@ -55,36 +54,40 @@ export function LoadingIndicator({
           <>
             {/* `key` forces a remount on state change so "success" always
                 restarts its clip from frame 0 instead of freezing on
-                whatever frame "pending" last painted. */}
+                whatever frame "pending" last painted.
+
+                mix-blend-multiply: the source sprite sheet bakes each frame
+                onto a near-white (#F8FAFC) card background rather than true
+                alpha transparency (real per-frame background removal was
+                never done — see D:\CODING\remotion\src\pikachu\
+                spritesheet.tsx's own comment). Multiplying that near-white
+                background against whatever's behind it (the blurred page)
+                leaves it effectively unchanged/invisible, while Pikachu's
+                actual yellow/black/red artwork stays visible — same
+                background-removal-by-blend-mode technique globals.css
+                already uses for the shelf shine-sweep (mix-blend-mode:
+                screen, the inverse operation). `isolate` on the parent
+                scopes the blend to this overlay only. */}
             <video
               key={state}
               autoPlay
               loop={state === "pending"}
               muted
               playsInline
-              className="h-[199px] w-[368px] max-w-full rounded-md border border-border"
+              className="mix-blend-multiply h-auto w-full max-w-[368px] aspect-[368/199]"
               src={state === "pending" ? "/loading/pikachu-pending.webm" : "/loading/pikachu-complete.webm"}
             />
 
-            {state === "pending" && (
-              <div className="h-3 w-full overflow-hidden rounded-full border border-border bg-bg">
-                {progress != null ? (
-                  <div
-                    className="h-full rounded-full bg-primary transition-[width] duration-(--duration-base)"
-                    style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
-                  />
-                ) : (
-                  <div
-                    className={cn(
-                      "h-full w-1/3 rounded-full bg-primary",
-                      "motion-safe:[animation:loading-indeterminate_1.1s_ease-in-out_infinite]",
-                    )}
-                  />
-                )}
+            {state === "pending" && progress != null && (
+              <div className="h-3 w-full overflow-hidden rounded-full bg-bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-(--duration-base)"
+                  style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+                />
               </div>
             )}
 
-            <p className="text-body font-medium text-text-primary">
+            <p className="text-body font-medium text-text-primary drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]">
               {state === "pending" ? pendingLabel : successLabel}
             </p>
           </>
