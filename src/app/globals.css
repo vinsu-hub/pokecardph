@@ -233,9 +233,21 @@ body {
 @media (width >= 640px) {
   /* perspective as a 3D *context* for the cards inside — the row itself is
      never rotated (unlike the earlier aisle-recession version), so the shelf
-     reads as flat/upright and each card's own lean is what carries the depth. */
+     reads as flat/upright and each card's own lean is what carries the depth.
+
+     padding-top: this row's own overflow-x: auto (real Tailwind class, needed
+     for touch/drag scrolling) forces its overflow-y to also compute as auto
+     per the CSS spec's axis-coupling rule (confirmed via getComputedStyle —
+     unlike .shelf below, which uses overflow-x: clip specifically because
+     clip does NOT trigger that coupling, so its own overflow-y stays
+     genuinely visible). An auto box clips to its own layout height, so a
+     card lifting on hover (.shelf-item:hover's translateY(-8px) + scale)
+     was getting its top ~16px cut off with no headroom reserved for it —
+     most visible on the first shelf, which has little space above it.
+     24px mirrors the pb-6 already reserved below for the ground shadow. */
   .shelf-row {
     perspective: 1100px;
+    padding-top: 24px;
   }
 
   /* Thin, flat ledge the cards stand on — no rotation, matching a real
