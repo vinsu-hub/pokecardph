@@ -1037,7 +1037,9 @@ producing a flaky false read of the DB mid-flight. Fixed by matching on exact pa
 **Status:** ✅ Built, verified end-to-end against the dev DB (non-destructively — the test script
 restores the shop's original details every run), re-verified live via Playwright 2026-08-17
 (settings sections render, save round-trip persists and restores, nav link enabled). Committed
-2026-08-17. **Deploy to production pending** (bundled with Phase 17, see below).
+2026-08-17. **Deployed to production 2026-08-17**, live at https://pokecard-ph.vercel.app
+(bundled with Phase 17, see below) — confirmed via `/vendor/settings` redirecting to `/login` on
+the deployed origin (route live, auth-gated as expected) rather than 404.
 
 `VendorShell.tsx`'s nav had reserved a "Shop Settings" slot, permanently disabled since it was
 built ("Shop settings arrive in a later release"). This phase builds the page it already pointed
@@ -1075,7 +1077,10 @@ process: wrapping a single-slot `<ImageUpload>` in a `max-w-[140px]` div crushed
 via Playwright), re-verified live via Playwright 2026-08-17 (hover transform differs from rest,
 shine follows cursor, transform reverts on mouse-leave, `prefers-reduced-motion` disables the
 transform entirely, mobile renders flat with zero horizontal overflow). Committed 2026-08-17.
-**Deploy to production pending** (bundled with Phase 16, above).
+**Deployed to production 2026-08-17**, live at https://pokecard-ph.vercel.app (bundled with
+Phase 16, above) — confirmed via the deployed shop page's HTML containing the `shelf-shine` markup
+(only emitted by `ShelfCardTilt.tsx`) and the served CSS bundle containing `--tilt-rx`/`--shine-x`
+and the `.shelf-shine` rule, not just a 200 on the route.
 
 Replaces the whole-row aisle-recession shelf tilt (`rotateX(10deg) rotateY(-14deg)` on
 `.shelf-row`, built in the Phase "Storefront isometric redesign" earlier this session) with a
