@@ -200,23 +200,25 @@ body {
 }
 
 /* ============================================================================
-   Shop storefront — 3D shelves
-   Reference: VENDOR STORE VIEW.png, where cards stand on rendered shelves
-   rather than sitting in a flat grid.
+   Shop storefront — "Collector's Gallery" card lean
+   Reference: VENDOR STORE VIEW.png, plus a "Collector's Gallery" reference
+   build (D:\POKECARD STORE FRONT\pokecard-storefront(3)) whose per-card lean/
+   hover-straighten/shine treatment is what this ports — replacing an earlier
+   whole-row aisle-recession tilt with individual cards standing on a flat
+   shelf, each with its own lean, ground shadow, and thickness edge.
 
    Layered as an enhancement: the markup is a working horizontal row on its
-   own, and the perspective is added only at >= 640px and only when motion is
+   own, and the 3D treatment is added only at >= 640px and only when motion is
    allowed. Below that, or under prefers-reduced-motion, it degrades to the
    flat row with no visual debt.
    ========================================================================== */
 
 .shelf {
-  --shelf-depth: 34px;
   --shelf-lip: 10px;
 }
 
 @media (width >= 640px) {
-  /* The rotated row's visual bounding box can bleed a little past its own
+  /* The leaned cards' visual bounding box can bleed a little past its own
      layout box (a known quirk of 3D-transformed content inside a scroll
      container) — clip it here so that never leaks into page-level
      horizontal scroll. overflow-y stays explicit: setting only overflow-x
@@ -229,35 +231,19 @@ body {
 }
 
 @media (width >= 640px) {
-  .shelf {
-    /* Tighter than before (was 1400px) — more dramatic foreshortening reads
-       as a real angled shelf rather than a barely-tilted floor. */
-    perspective: 950px;
-    /* Off-center vanishing point (was 50% 120%) — dead-center perspective
-       reads as "viewed straight on," an off-side origin reads as "viewed at
-       an angle," which is most of what makes this isometric rather than flat. */
-    perspective-origin: 15% 110%;
-  }
-
-  /* The row's own plane rotation — rotateX alone (the old behavior) only
-     tilts front-to-back and can't foreshorten along the row; rotateY is what
-     makes cards further along the row visibly recede toward the vanishing
-     point. preserve-3d so the row and its items compose one 3D scene rather
-     than each flattening independently. */
+  /* perspective as a 3D *context* for the cards inside — the row itself is
+     never rotated (unlike the earlier aisle-recession version), so the shelf
+     reads as flat/upright and each card's own lean is what carries the depth. */
   .shelf-row {
-    transform-style: preserve-3d;
-    transform: rotateX(10deg) rotateY(-14deg);
+    perspective: 1100px;
   }
 
-  /* The plane the cards stand on. Carries the same rotateY as .shelf-row so
-     the ledge and the row of cards read as one coherent tilted surface
-     instead of a square-on floor with sideways-skewed objects sitting on it. */
+  /* Thin, flat ledge the cards stand on — no rotation, matching a real
+     shelf's front lip rather than a receding aisle floor. */
   .shelf-plane {
     position: absolute;
     inset: auto 0 0 0;
-    height: var(--shelf-depth);
-    transform: rotateY(-14deg) rotateX(62deg);
-    transform-origin: 50% 0;
+    height: var(--shelf-lip);
     background: linear-gradient(
       180deg,
       #ffffff 0%,
@@ -270,16 +256,45 @@ body {
     pointer-events: none;
   }
 
-  /* Cards sit slightly forward of the plane and lift on hover. rotateY(6deg)
-     is a deliberate PARTIAL counter-rotation against the row's -14deg (not a
-     full +14deg cancel) — leaving ~8deg net lean so each card reads as
-     "standing in its slot on an angled shelf" rather than a flat cutout
-     pasted onto an obviously-rotated row. Contained for perf: fixed widths
-     already set on .shelf-item elsewhere, so this is a safe, cheap boundary
-     for off-screen cards in a shop with 300+ listings. */
+  /* Static baseline lean — every card rests slightly tilted, as if propped
+     in its slot, pivoting from its base rather than its center. */
   .shelf-item {
-    transform: translateZ(var(--shelf-lip)) rotateY(6deg);
-    contain: layout paint style;
+    transform-style: preserve-3d;
+    transform-origin: center bottom;
+    transform: rotateY(-6deg) rotateZ(-1deg);
+  }
+
+  /* Card-thickness edge — an offset sliver behind the card simulating a
+     stacked/sleeved edge, not a perfectly flat cutout. */
+  .shelf-item::before {
+    content: "";
+    position: absolute;
+    inset: 1px -5px 2px 4px;
+    border-radius: 8px;
+    background: linear-gradient(
+      100deg,
+      #ffffff,
+      color-mix(in srgb, var(--color-border) 160%, white) 74%,
+      var(--color-border)
+    );
+    box-shadow: 4px 5px 6px rgb(0 0 0 / 0.15);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  /* Ground-contact shadow — sells the card as resting ON the shelf, not
+     floating above it. Shrinks and fades on hover as the card lifts. */
+  .shelf-item::after {
+    content: "";
+    position: absolute;
+    left: 20%;
+    right: 20%;
+    bottom: -6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgb(0 0 0 / 0.20);
+    filter: blur(5px);
+    pointer-events: none;
   }
 }
 
@@ -287,24 +302,56 @@ body {
   .shelf-item {
     transition: transform var(--duration-fast) var(--ease-out-soft);
   }
-  .shelf-item:hover {
-    transform: translateZ(calc(var(--shelf-lip) + 8px)) translateY(-2px) rotateY(6deg);
+  .shelf-item::after {
+    transition: transform var(--duration-fast) var(--ease-out-soft), opacity var(--duration-fast) var(--ease-out-soft);
   }
 
-  /* Contact shadow — sells the card as resting ON the shelf. Sized to the
-     card so it reads as cast, not painted. */
-  .shelf-item::after {
-    content: "";
+  /* Straightens toward upright, lifts, and scales up slightly — the cursor-
+     relative --tilt-rx/--tilt-ry custom properties (set by ShelfCardTilt.tsx
+     on mousemove) layer a live tilt on top of this fixed hover lean, so the
+     card actively responds to where the cursor is over it, not just whether
+     it's hovered at all. */
+  .shelf-item:hover,
+  .shelf-item:focus-within {
+    transform:
+      translateY(-8px)
+      rotateX(var(--tilt-rx, 0deg))
+      rotateY(calc(-2deg + var(--tilt-ry, 0deg)))
+      scale(1.03);
+    z-index: 3;
+  }
+  .shelf-item:hover::after,
+  .shelf-item:focus-within::after {
+    transform: scaleX(0.78);
+    opacity: 0.34;
+  }
+
+  /* Prismatic highlight that follows the cursor — a radial glow positioned
+     via --shine-x/--shine-y (same source as the tilt values), fading in only
+     on hover so it reads as an inspection cue, not a static overlay. */
+  .shelf-shine {
     position: absolute;
-    inset: auto 8% -6px 8%;
-    height: 12px;
-    border-radius: 50%;
-    background: radial-gradient(
-      ellipse at center,
-      rgb(0 0 0 / 0.18) 0%,
-      rgb(0 0 0 / 0) 70%
-    );
+    inset: 0;
+    border-radius: inherit;
     pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(
+      circle at var(--shine-x, 50%) var(--shine-y, 50%),
+      rgb(255 255 255 / 0.55),
+      transparent 45%
+    );
+    transition: opacity var(--duration-fast) var(--ease-out-soft);
+    z-index: 5;
+  }
+  .shelf-item:hover .shelf-shine,
+  .shelf-item:focus-within .shelf-shine {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shelf-item {
+    transform: none !important;
   }
 }
 

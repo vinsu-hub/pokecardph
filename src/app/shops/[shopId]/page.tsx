@@ -8,6 +8,7 @@ import { AppShell } from "@/components/shared/AppShell";
 import { FilterSheet } from "@/components/shared/FilterSheet";
 import { ListingCardTile } from "@/components/buyer/ListingCardTile";
 import { ListingResults, ViewToggle } from "@/components/buyer/ListingResults";
+import { ShelfCardTilt } from "@/components/buyer/ShelfCardTilt";
 import { ShelfScroller } from "@/components/buyer/ShelfScroller";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { getCartCount } from "@/lib/cart";
@@ -440,9 +441,9 @@ function Shelf({
       <div className="shelf relative mt-3">
         <ShelfScroller>
           {listings.map((l) => (
-            <li key={l.id} className="shelf-item relative w-[160px] shrink-0 sm:w-[200px]">
+            <ShelfCardTilt key={l.id}>
               <ListingCardTile listing={l} />
-            </li>
+            </ShelfCardTilt>
           ))}
         </ShelfScroller>
         <span aria-hidden className="shelf-plane" />

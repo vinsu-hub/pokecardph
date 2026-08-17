@@ -1069,6 +1069,44 @@ process: wrapping a single-slot `<ImageUpload>` in a `max-w-[140px]` div crushed
 
 ---
 
+## Phase 17 — Storefront card-lean 3D depth (replacing the aisle-recession shelf)
+
+**Status:** ✅ Built and verified locally (lint/typecheck/build clean, real computed-style checks
+via Playwright), re-verified live via Playwright 2026-08-17 (hover transform differs from rest,
+shine follows cursor, transform reverts on mouse-leave, `prefers-reduced-motion` disables the
+transform entirely, mobile renders flat with zero horizontal overflow). Committed 2026-08-17.
+**Deploy to production pending** (bundled with Phase 16, above).
+
+Replaces the whole-row aisle-recession shelf tilt (`rotateX(10deg) rotateY(-14deg)` on
+`.shelf-row`, built in the Phase "Storefront isometric redesign" earlier this session) with a
+different 3D depth technique studied from an external reference build,
+`D:\POKECARD STORE FRONT\pokecard-storefront(3)` (a separate Vite/React "Collector's Gallery"
+scaffold, not part of this repo). User's explicit call, reversing the earlier choice: the row itself
+no longer rotates — each card now has its own static baseline lean (`rotateY(-6deg) rotateZ(-1deg)`,
+pivoting from its base), a ground-contact shadow that shrinks/fades on hover, and a card-thickness
+edge pseudo-layer, all inside a flat `.shelf-row { perspective: 1100px }` context.
+
+**One real finding from reading the reference's code closely, not assumed**: its own JS computes
+cursor-relative `--rx`/`--ry` custom properties on `mousemove`, but a full scan of its 22-line
+`index.css` confirmed zero rules ever read them — cards there don't actually follow the cursor
+despite its own `ideas.md` design doc explicitly describing that interaction ("capped at 8 degrees").
+User chose to build the fuller, actually-working version rather than replicate the literal
+(incomplete) shipped behavior — confirmed via `Playwright`, launching the reference project directly
+(`pnpm install && pnpm dev`) and reading computed styles, before porting anything.
+
+**Built**: `src/components/buyer/ShelfCardTilt.tsx` (new) — a client wrapper around the existing
+`ListingCardTile` (left completely unmodified, since it's also reused unchanged by Home/Browse and
+Search) that tracks cursor position and sets `--tilt-rx`/`--tilt-ry`/`--shine-x`/`--shine-y`, which
+`globals.css`'s `.shelf-item:hover`/`.shelf-shine` rules genuinely consume — verified via computed
+`getComputedStyle().transform` differing measurably between a center-hover and a corner-hover on the
+same card, not just visual inspection. `src/app/shops/[shopId]/page.tsx`'s `Shelf` function now
+renders `<ShelfCardTilt>` instead of a plain `<li>`. `prefers-reduced-motion: reduce` fully disables
+the transform; the whole treatment stays gated to `>= 640px` (mobile renders a plain flat row, zero
+horizontal overflow, confirmed); `:focus-within` triggers the identical treatment to `:hover`
+(confirmed via keyboard-only focus, not mouse-only).
+
+---
+
 ## Deferred — not part of this effort
 
 **Native mobile app (React Native).** A separate future project with its own session. The website's
