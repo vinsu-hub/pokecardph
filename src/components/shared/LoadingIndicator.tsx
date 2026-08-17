@@ -2,6 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { useIsClient } from "@/lib/use-is-client";
+import { ChromaKeyVideo } from "@/components/shared/ChromaKeyVideo";
 
 /**
  * On-brand replacement for a generic spinner during a real async action —
@@ -25,6 +26,7 @@ export function LoadingIndicator({
   pendingLabel = "Loading…",
   successLabel = "Done!",
   errorMessage = "Something went wrong — please try again.",
+  anchored = false,
 }: {
   state: "idle" | "pending" | "success" | "error";
   /** 0-100, real data only — never invented. Omit to skip the progress bar
@@ -34,15 +36,27 @@ export function LoadingIndicator({
   pendingLabel?: string;
   successLabel?: string;
   errorMessage?: string;
+  /** Gives the overlay a stable `view-transition-name` so it survives
+   *  Next's route-navigation transitions as one persistent element instead
+   *  of being torn down and rebuilt at each step of the transition chain
+   *  Next fires per navigation (confirmed by instrumenting
+   *  `document.startViewTransition` directly) — that rebuild is what read
+   *  as a white flicker between steps. Only `src/app/loading.tsx` (the one
+   *  instance actually living inside a route transition) should set this —
+   *  the name must stay unique document-wide, and the browser aborts a
+   *  transition outright on a collision, so the three Server-Action
+   *  overlays (checkout, trade, beta signup) leave it unset. */
+  anchored?: boolean;
 }) {
   const mounted = useIsClient();
   if (!mounted || state === "idle") return null;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 isolate grid place-items-center px-4"
+      className="fixed inset-0 z-50 grid place-items-center px-4"
       role="status"
       aria-live="polite"
+      style={anchored ? { viewTransitionName: "loading-overlay" } : undefined}
     >
       <div aria-hidden className="absolute inset-0 backdrop-blur-md bg-text-primary/10" />
       <div className="relative flex w-full max-w-[400px] flex-col items-center gap-4 px-4">
@@ -52,29 +66,10 @@ export function LoadingIndicator({
           </p>
         ) : (
           <>
-            {/* `key` forces a remount on state change so "success" always
-                restarts its clip from frame 0 instead of freezing on
-                whatever frame "pending" last painted.
-
-                mix-blend-multiply: the source sprite sheet bakes each frame
-                onto a near-white (#F8FAFC) card background rather than true
-                alpha transparency (real per-frame background removal was
-                never done — see D:\CODING\remotion\src\pikachu\
-                spritesheet.tsx's own comment). Multiplying that near-white
-                background against whatever's behind it (the blurred page)
-                leaves it effectively unchanged/invisible, while Pikachu's
-                actual yellow/black/red artwork stays visible — same
-                background-removal-by-blend-mode technique globals.css
-                already uses for the shelf shine-sweep (mix-blend-mode:
-                screen, the inverse operation). `isolate` on the parent
-                scopes the blend to this overlay only. */}
-            <video
-              key={state}
-              autoPlay
+            <ChromaKeyVideo
+              videoKey={state}
               loop={state === "pending"}
-              muted
-              playsInline
-              className="mix-blend-multiply h-auto w-full max-w-[368px] aspect-[368/199]"
+              className="h-auto w-full max-w-[368px] aspect-[368/199]"
               src={state === "pending" ? "/loading/pikachu-pending.webm" : "/loading/pikachu-complete.webm"}
             />
 

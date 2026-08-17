@@ -473,6 +473,33 @@ body {
   }
 }
 
+/* Anchors loading.tsx's overlay (LoadingIndicator's `anchored` prop sets
+   `view-transition-name: loading-overlay` on it) so it survives Next's
+   route-navigation transition chain as one persistent element instead of
+   being torn down and rebuilt at every step of it — that rebuild, not the
+   root blur/dissolve above, is what read as a white flicker between steps.
+   Same technique Next's own view-transitions guide uses to keep a <header>
+   static through page slides ("Anchoring the header",
+   node_modules/next/dist/docs/01-app/02-guides/view-transitions.md):
+   `display: none` on the old snapshot prevents a doubled flash where both
+   the previous and next instant of the overlay are briefly visible, and
+   `animation: none` on the new one keeps it from crossfading in — it just
+   stays on screen, stable, above `root`'s dissolve (z-index above root's
+   own, which is unset/0). Named elements are excluded from their ancestor
+   group's own captured image, so this doesn't fight the `::view-transition-
+   old/new(root)` rules above — Pikachu is carved out of `root` entirely and
+   drawn once, here, instead of being part of that crossfade too. */
+::view-transition-group(loading-overlay) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(loading-overlay) {
+  display: none;
+}
+::view-transition-new(loading-overlay) {
+  animation: none;
+}
+
 /* ============================================================================
    Events — the reveal moment
    The 800ms cross-dissolve lives in the component (it needs to be paired with
