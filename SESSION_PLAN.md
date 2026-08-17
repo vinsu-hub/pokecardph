@@ -40,6 +40,20 @@ Storefront shelf got a genuine isometric CSS 3D treatment (not just the subtle l
 Firefox, and WebKit) plus chevron paging, search, sort, grid/list toggle, true multi-select facets,
 and an icon stat header — closing out the Storefront rebuild item queued below.
 
+**2026-08-17/18 session:** four phases built, verified live, committed, pushed, and deployed —
+full detail in Phases 18-21 further down. Summary: the `/how-it-works` page (Phase 18); a Trade Hub
+rebuild with a real multi-card offer/want builder and a genuinely-computed Recommended Matches query
+(Phase 19); a full Shop Storefront structural rebuild against an updated "Collector's Gallery"
+reference — user explicitly asked for a literal layout copy after an initial lighter pass wasn't
+enough, done on this app's own locked colors/type, plus a real hover-clipping bug found and fixed via
+`getComputedStyle`, not guessed (Phase 20); and a site-wide rollout of the Pikachu loading animation
+(navigation, checkout, trade) with two real bugs fixed — a jump-cut in the pending loop's animation,
+and (after user feedback the first fix "didn't work") a full overlay redesign removing every box
+around it via `mix-blend-mode: multiply` (Phase 21). Also graphed the whole codebase into a
+knowledge-graph + Obsidian vault this session (`graphify-out/` — untracked, deliberately left out of
+every commit rather than added to `.gitignore`, since nothing has decided yet whether it should be
+checked in) for faster future context-loading — not part of the shipped product.
+
 ---
 
 ## Scope — read this first
@@ -1112,6 +1126,137 @@ horizontal overflow, confirmed); `:focus-within` triggers the identical treatmen
 
 ---
 
+## Phase 18 — How It Works page
+
+**Status:** ✅ Built, verified, committed, pushed, deployed — 2026-08-17/18.
+
+Both `LandingHeader.tsx` and the global `Footer.tsx` had a "How It Works" entry deliberately
+rendered inert (a disabled span, not a link) since no page existed behind it. Built the real page at
+`/how-it-works` — a general marketplace explainer for both buyers and sellers, public and rendered
+identically signed-in or signed-out (same shell as the beta vendor pitch: `LandingHeader` + `Footer`,
+no `AppShell`, no redirect gate). Six sections: hero with Start Browsing/Become a Seller CTAs, a
+3-step "For Buyers" track, a 3-step "For Sellers" track, a Trust & Condition explainer (Flat Scan
+required / Full Condition Scan optional — described neutrally, since the payment gate for the
+latter isn't built), a 3-up "Three ways to trade" row, and an FAQ via the existing shared `Faq`
+component. No reference image or phase spec exists for this screen; built to the same
+`LandingHeader`/`Footer` shell `src/app/beta/page.tsx` already established.
+
+**Taste pass** (`taste-redesign` skill) found one real, worth-fixing gap and confirmed several
+non-issues: `LandingHeader` had no active-nav-link state despite `AppShell` having had one all
+along — a gap that only became visible once the header started rendering across three pages instead
+of one; fixed by reusing `AppShell`'s exact `text-primary`/`aria-current` idiom. An attempted second
+fix (alternating section backgrounds for rhythm) was tried, then reverted — the body already defaults
+to muted with white bordered cards providing contrast (same structure `/beta` uses), so it was
+redundant, not a fix. Rejected outright as violating the locked design system: swapping `lucide-react`
+for a different icon set, and replacing the shared `Faq` accordion — both are established, reused
+conventions across the codebase.
+
+## Phase 19 — Trade Hub rebuild
+
+**Status:** ✅ Built, verified, committed, pushed, deployed — 2026-08-18.
+
+Rebuilds the Buyer Trade Hub to match `TRADE HOME PANEL.png`: tabs (My Trade Cards / Find a Trade /
+My Trades) replacing the earlier sidebar, a hero illustration recreating `Trade Header.png`'s
+composition with real card photography and the brand red accent instead of the reference's purple, a
+multi-card You Offer / You Want builder with `SlideOver` pickers (was single-listing only), and a
+Recommended Matches sidebar backed by a real `trade_cards`-vs-active-`listings` `card_id` overlap
+query (`src/app/trade/queries.ts`) per `POKECARD_PH_PHASE3_TRADE_ENGINE.md` §4.1's own guidance
+("simple SQL query... doesn't need to be a smart algorithm yet") — none of this was unspecced scope,
+it was spec'd in Phase 3 but never fully built.
+
+`proposeTrade` now accepts multiple requested listings and rejects cross-shop proposals with a clear
+error, since `trades.shop_id` is a single column — confirmed via live test that the rejection message
+is specific, not a silent drop or a generic crash. `trade_items` already supported multiple
+`requested` rows per trade, so no migration was needed. `VerifiedMark` extracted out of
+`ListingCardTile` into a shared component so `RecommendedMatches` reuses the identical checkmark.
+`TradeCard`/`TradeCardWithCard` types and `tradeCardConditionLabel` added to
+`lib/supabase/types.ts` alongside the existing `Listing`-side `conditionLabel`.
+
+**Known limitation, not fixed by this pass**: no `trade_cards` seed data exists anywhere in the
+repo — `SESSION_PLAN.md` (this file, further up) calls for seeding ~10 rows for the Gate 3 test
+cycle, but no migration/seed script actually does it. My Trade Cards and Recommended Matches render
+correctly but empty on a fresh database; ships honest empty states rather than fabricated rows.
+
+## Phase 20 — Shop Storefront: Collector's Gallery structural rebuild
+
+**Status:** ✅ Built, verified, committed, pushed, deployed — 2026-08-18. Supersedes Phase 17's shelf
+treatment with a full page-level rebuild, not just the card hover mechanics.
+
+Three passes in one session, kept as three separate commits since each was a materially different
+scope, not a straight-line iteration:
+
+1. **Adaptive merge** (`4288dca`, partial) — an updated checkpoint of the same "Collector's Gallery"
+   reference Vite/React scaffold Phase 17 already partially ported
+   (`D:\STORE VENDOR FRONT UPDATE\pokecard-storefront`), analyzed by reading its complete
+   `Home.tsx`/`index.css` and launching it locally. Found the reference's own cursor-tilt is still
+   dead code (`--rx`/`--ry` computed on mousemove, never read by any CSS rule — same incomplete-wiring
+   bug Phase 17 already found and fixed once), so nothing to port there; our tilt/shine was already
+   more complete. Adopted a genuinely new detail: a diagonal hover light-sweep across the card art
+   (`globals.css`, `.shelf-item .card-art`, `mix-blend-mode: screen`), plus Set-facet search +
+   "Show more" on the filter sidebar (`ShopFacetList.tsx`, new).
+2. **Literal structural rebuild** (`4288dca`, main pass) — user was explicit that the adaptive merge
+   didn't go far enough and asked for a literal copy of the reference's layout. Confirmed with the
+   user first: keep this app's locked red/black/white + type scale (not the reference's violet/Sora),
+   and scope the new card design to this page's shelf only, not the shared `ListingCardTile`. Rebuilt:
+   the hero (gradient card, real `shop.logo_url` avatar with initials fallback, four fixed-size stat
+   boxes, Message Shop/Follow buttons repositioned to overlap down out of the hero into the tabs row,
+   still fully disabled with their existing reasons); the tabs+toolbar merged into one always-visible
+   row (surfaced and fixed a real bug — `showShelves` never accounted for `sort`/`view` because those
+   controls were previously unreachable while shelves showed, so making the toolbar always-visible
+   would have made clicking "Price ↑" silently do nothing); the sidebar merged from two boxes into
+   one with internal dividers; a new shelf-only `ShopShelfCard.tsx` (image + a label chip pulled up
+   over the image via negative margin, not `position:absolute` — the shelf's live `preserve-3d` tilt
+   makes an absolutely-positioned child a real cross-browser risk).
+3. **Hover-cutoff bug fix** (`fc8fddf`) — user reported cards getting clipped at the top on hover.
+   Diagnosed via `getComputedStyle`, not guessed: `.shelf-row` (the actual scroll container) has
+   `overflow-x: auto`, and per the CSS spec that forces its `overflow-y` to also compute as `auto`
+   (unlike `.shelf`, which uses `overflow-x: clip` specifically because `clip` doesn't trigger that
+   cross-axis coupling) — so a card lifting on hover had no reserved headroom and got clipped by the
+   row's own box. Fixed with `padding-top: 24px` on `.shelf-row`, mirroring the `pb-6` already
+   reserved below for the ground shadow.
+
+## Phase 21 — Pikachu loading animation: site-wide rollout + overlay redesign
+
+**Status:** ✅ Built, verified, committed, pushed, deployed — 2026-08-18.
+
+The Pikachu clips and `LoadingIndicator.tsx` (Phase "third pass," 2026-08-13) were wired into exactly
+one flow, per that session's explicit scope decision. This session rolled them out further and fixed
+two real bugs found along the way:
+
+**Animation loop seam** — opening the source sprite sheet directly
+(`D:\CODING\remotion\public\pikachu\sheet.png`) showed the "pending" loop's frame 1 (Idle,
+empty-handed) and frame 10 (Almost There, cart already full) look nothing alike, so looping 10→1 was
+a visible pop every ~1.3s. Fixed in `D:\CODING\remotion\src\pikachu\PikachuLoaderPending.tsx` with a
+ping-pong loop (forward 1-10, then back 10-1) instead of a hard cut, re-rendered, and copied into
+`public/loading/pikachu-pending.webm`. The intentional stepped 7.5fps character rate was untouched —
+a prior session's deliberate taste call, not a bug.
+
+**Rolled out to three more call sites**: `src/app/loading.tsx` (new) — a single root-level file
+Next.js uses as the Suspense fallback for every route below it, confirmed via the raw streamed HTTP
+response (not just assumed) that it's genuinely served first on real dynamic routes; `CheckoutForm.tsx`
+— "Processing your transaction…" on the real `placeOrder` submit; `TradeBuilder.tsx` — "Processing
+your trade…" on the real `proposeTrade` submit, which also fixed a real gap: that submit button was
+a plain `<button>`, missing the double-submit guard `SubmitButton` provides everywhere else (the same
+bug class that once hit checkout for real, per `SubmitButton`'s own comment).
+
+**Overlay redesign, two follow-up rounds after user feedback the fix "didn't work":** round one
+blurred the backdrop (`backdrop-blur-md` + a light tint, replacing a flat `bg-text-primary/40`) —
+correct but incomplete, since the modal *card* sitting on top was still a solid `#F8FAFC` box with a
+border and shadow, which dominated the view far more than the now-subtle blurred edges. Round two
+removed that card entirely, removed the video's own border/box, and applied `mix-blend-mode:
+multiply` so the sprite's baked-in near-white background (never true alpha — see the Phase 3rd-pass
+entry above) blends away against the blurred page behind it — the same background-removal-by-
+blend-mode technique `globals.css` already uses for the shelf shine-sweep, just the inverse (`screen`
+vs `multiply`). First attempt at the blend didn't work because `isolate` was on the wrong element,
+cutting the video off from the backdrop it needed to blend against; moved to the outer container and
+re-verified against a **real live trade submission** (screenshot proof of the composited result, not
+a synthetic stand-in — the first round's verification gap). Also removed the indeterminate
+progress-bar sweep (a second, generic loading animation stacked under the on-brand Pikachu one that
+no real call site needed) and fixed an unrelated aspect-ratio bug (the video had a fixed height
+unrelated to its real 368:199 ratio).
+
+---
+
 ## Deferred — not part of this effort
 
 **Native mobile app (React Native).** A separate future project with its own session. The website's
@@ -1242,10 +1387,13 @@ it.
   loading modal's background matches the sheet's own sampled page color (`#F8FAFC`) instead so the
   card frame reads as intentional. Wired into one flow only, per explicit scope decision: beta
   signup, via a new `src/components/shared/LoadingIndicator.tsx` (progress bar is real data when the
-  caller has it, an indeterminate CSS sweep otherwise — most Server Action submits, including this
-  one, only expose a pending boolean, not a percentage). **Not yet wired anywhere else** — Add
-  Listing, Trade, and checkout (once Xendit exists) are explicit future integration points, not done
-  here.
+  caller has it — the indeterminate CSS sweep fallback was removed 2026-08-18, see Phase 21 above).
+  **Rolled out further 2026-08-18** (Phase 21): a root `src/app/loading.tsx` covers navigation/
+  tab-switch loading site-wide, and checkout (`placeOrder`)/trade proposal (`proposeTrade`) submits
+  both show it for real. **Still not wired**: Add Listing. The pending-loop animation itself also had
+  a real jump-cut bug fixed the same day, and the overlay's presentation was substantially reworked
+  (blurred backdrop, no card/box chrome, `mix-blend-mode: multiply` so the video's baked-in
+  background disappears) — full detail in Phase 21.
 - ~~**Deployment**~~ — **done 2026-08-11.** Live at **https://pokecard-ph.vercel.app** (Vercel
   project `vince-tamis/pokecard-ph`), serving real Supabase data from serverless with middleware and
   auth redirects working. Operational detail now lives in
