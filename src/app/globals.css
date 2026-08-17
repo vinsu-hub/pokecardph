@@ -347,6 +347,31 @@ body {
   .shelf-item:focus-within .shelf-shine {
     opacity: 1;
   }
+
+  /* Diagonal light sweep across the card art specifically (not the whole
+     card, unlike .shelf-shine above) — ported from the "Collector's Gallery"
+     reference's .card-art:after. Distinct, additive effect: a single band
+     travels once across the image on hover, on top of the existing
+     cursor-tracking radial shine and tilt. Scoped to .shelf-item .card-art
+     so it only ever applies on the storefront shelf, never on
+     ListingCardTile's shared use in Home/Browse/Search grids. */
+  .shelf-item .card-art {
+    position: relative;
+  }
+  .shelf-item .card-art::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 30%, rgb(255 255 255 / 0.55) 48%, transparent 58%);
+    transform: translateX(-120%);
+    transition: transform var(--duration-slow) var(--ease-out-soft);
+    mix-blend-mode: screen;
+    pointer-events: none;
+  }
+  .shelf-item:hover .card-art::after,
+  .shelf-item:focus-within .card-art::after {
+    transform: translateX(120%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

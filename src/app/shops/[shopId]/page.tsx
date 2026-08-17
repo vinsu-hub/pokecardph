@@ -1,15 +1,17 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ShoppingBag, ThumbsUp, Clock, Star } from "lucide-react";
+import { ShoppingBag, ThumbsUp, Clock, Star, MapPin } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser, shellUser } from "@/lib/auth";
 import { AppShell } from "@/components/shared/AppShell";
 import { FilterSheet } from "@/components/shared/FilterSheet";
-import { ListingCardTile } from "@/components/buyer/ListingCardTile";
 import { ListingResults, ViewToggle } from "@/components/buyer/ListingResults";
 import { ShelfCardTilt } from "@/components/buyer/ShelfCardTilt";
 import { ShelfScroller } from "@/components/buyer/ShelfScroller";
+import { ShopFacetList } from "@/components/buyer/ShopFacetList";
+import { ShopShelfCard } from "@/components/buyer/ShopShelfCard";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { getCartCount } from "@/lib/cart";
 import type { ListingCard } from "@/lib/supabase/types";
@@ -132,7 +134,14 @@ export default async function ShopPage({
 
   // Shelves are curated/grouped, not a sortable flat list — any search query
   // or facet selection switches to the flat, sortable grid/list view instead.
-  const showShelves = cat === "all" && !q && selectedSets.length === 0 && selectedRarities.length === 0;
+  // The toolbar's sort/view controls used to be unreachable while shelves
+  // showed (gated behind !showShelves), so this never needed to check them.
+  // Now that the toolbar lives in the always-visible tabs row, clicking sort
+  // or the grid/list toggle must actually switch out of the curated shelves
+  // into the flat sortable list — otherwise the click sets the URL param and
+  // silently does nothing.
+  const showShelves = cat === "all" && !q && selectedSets.length === 0
+    && selectedRarities.length === 0 && !sp.sort && !sp.view;
 
   const stats = [
     { label: "Sales", value: `${shop.review_count * 4}+`, Icon: ShoppingBag },
@@ -151,8 +160,8 @@ export default async function ShopPage({
   };
 
   const sidebar = (
-    <>
-      <section className="rounded-lg border border-border bg-bg p-4">
+    <div className="divide-y divide-border rounded-lg border border-border bg-bg">
+      <section className="p-4">
         <h2 className="text-h3 font-semibold">Shop Categories</h2>
         <ul className="mt-2 flex flex-col">
           {categories.map(([key, label, items]) => (
@@ -176,91 +185,157 @@ export default async function ShopPage({
 
       {/* Filter By — the reference's second sidebar block. Multi-select: each
           value toggles membership rather than replacing a single selection. */}
-      <section className="mt-4 rounded-lg border border-border bg-bg p-4">
+      <section className="p-4">
         <h2 className="text-h3 font-semibold">Filter By</h2>
-        <FacetList title="Set" items={setFacets} param="set" selected={selectedSets} url={url} />
-        <FacetList title="Rarity" items={rarityFacets} param="rarity" selected={selectedRarities} url={url} />
+        <div className="divide-y divide-border">
+          <div className="pb-3">
+            <ShopFacetList
+              title="Set" items={setFacets} param="set" selected={selectedSets}
+              shopId={shopId} currentParams={sp} searchable
+            />
+          </div>
+          <div className="pt-3">
+            <ShopFacetList
+              title="Rarity" items={rarityFacets} param="rarity" selected={selectedRarities}
+              shopId={shopId} currentParams={sp}
+            />
+          </div>
+        </div>
       </section>
-    </>
+    </div>
   );
 
   return (
     <AppShell user={shellUser(user)} cartCount={cartCount}>
-      {/* ---- Shop header ---- */}
-      <header className="enter rounded-lg border border-border bg-primary-subtle p-(--card-pad)">
-        <div className="flex flex-wrap items-start gap-4">
-          <span className="grid size-16 shrink-0 place-items-center rounded-full bg-primary text-h3 font-bold text-white">
-            {shop.name.slice(0, 2).toUpperCase()}
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-display font-bold">{shop.name}</h1>
-              {shop.tier === "premium" && <StatusPill tone="paid">Premium Shop</StatusPill>}
-              {shop.is_beta_vendor && <StatusPill tone="attention">Founding Vendor</StatusPill>}
-            </div>
-            <p className="mt-1 text-body text-text-secondary">
-              ★ {shop.rating} ({shop.review_count}) · {shop.follower_count} followers
-            </p>
-            <p className="text-caption text-text-secondary">
-              {shop.location}
-              {shop.location && " · "}
-              Joined{" "}
-              {new Date(shop.joined_at).toLocaleDateString("en-PH", { year: "numeric", month: "long" })}
-            </p>
-          </div>
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {stats.map(({ label, value, Icon }) => (
-              <div key={label} className="rounded-md bg-bg px-3 py-2 text-center">
-                <dd className="flex items-center justify-center gap-1.5 text-h3 font-bold tabular">
-                  <Icon className="size-4 text-primary" aria-hidden />
-                  {value}
-                </dd>
-                <dt className="text-caption text-text-secondary">{label}</dt>
-              </div>
-            ))}
-          </dl>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            disabled
-            title="Messaging arrives in a later release"
-            className="h-11 cursor-not-allowed rounded-md border border-border bg-bg px-4 text-body font-medium opacity-50"
-          >
-            Message Shop
-          </button>
-          <button
-            disabled
-            title="Following arrives in a later release"
-            className="h-11 cursor-not-allowed rounded-md bg-primary px-4 text-body font-medium text-white opacity-50"
-          >
-            Follow
-          </button>
-        </div>
-      </header>
-
-      {/* ---- Tabs ---- */}
-      <nav className="enter enter-d1 mt-4 flex flex-wrap gap-1 border-b border-border">
-        {TABS.map((t) => (
-          <Link
-            key={t}
-            href={`/shops/${shopId}?tab=${t}`}
-            aria-current={tab === t ? "page" : undefined}
-            className={`flex h-11 items-center border-b-2 px-4 text-body font-medium transition-colors duration-(--duration-fast) ${
-              tab === t
-                ? "border-primary text-primary"
-                : "border-transparent text-text-secondary hover:text-text-primary"
-            }`}
-          >
-            {TAB_LABEL[t]}
-            {t === "reviews" && (
-              <span className="ml-1.5 text-caption text-text-secondary tabular">
-                ({shop.review_count})
+      {/* ---- Shop header: hero + tabs/toolbar read as one seamless box ---- */}
+      <div className="enter">
+        <header className="relative rounded-t-lg bg-gradient-to-br from-primary-subtle to-bg px-4 py-5 sm:px-6 sm:py-6">
+          <div className="flex flex-wrap items-center gap-5 sm:gap-6">
+            {shop.logo_url ? (
+              <Image
+                src={shop.logo_url}
+                alt={shop.name}
+                width={110}
+                height={110}
+                className="size-[88px] shrink-0 rounded-full object-cover sm:size-[110px]"
+              />
+            ) : (
+              <span className="grid size-[88px] shrink-0 place-items-center rounded-full bg-primary text-h2 font-bold text-white sm:size-[110px]">
+                {shop.name.slice(0, 2).toUpperCase()}
               </span>
             )}
-          </Link>
-        ))}
-      </nav>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h1 className="text-display font-bold tracking-tight">{shop.name}</h1>
+                {shop.tier === "premium" && <StatusPill tone="paid">Premium Shop</StatusPill>}
+                {shop.is_beta_vendor && <StatusPill tone="attention">Founding Vendor</StatusPill>}
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-5 text-body">
+                <span className="flex items-center gap-1.5">★ {shop.rating} ({shop.review_count})</span>
+                <span className="flex items-center gap-1.5">★ {shop.follower_count} followers</span>
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-5 text-caption text-text-secondary">
+                {shop.location && (
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="size-3.5" aria-hidden /> {shop.location}
+                  </span>
+                )}
+                <span>
+                  Joined{" "}
+                  {new Date(shop.joined_at).toLocaleDateString("en-PH", { year: "numeric", month: "long" })}
+                </span>
+              </div>
+            </div>
+
+            <dl className="grid grid-cols-4 gap-2 sm:gap-2.5">
+              {stats.map(({ label, value, Icon }) => (
+                <div
+                  key={label}
+                  className="flex h-[76px] w-[70px] flex-col items-center justify-center gap-1 rounded-md border border-border bg-bg text-center sm:h-[98px] sm:w-[91px]"
+                >
+                  <Icon className="size-4 text-primary sm:size-5" aria-hidden />
+                  <dd className="text-h3 font-bold tabular">{value}</dd>
+                  <dt className="text-caption text-text-secondary">{label}</dt>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          {/* Overlaps down out of the hero into the tabs/toolbar row below —
+              still disabled with their existing reasons, only repositioned. */}
+          <div className="absolute right-4 -bottom-4 z-20 flex gap-2 sm:right-[124px] sm:-bottom-[22px]">
+            <button
+              disabled
+              title="Messaging arrives in a later release"
+              className="flex h-[30px] cursor-not-allowed items-center rounded-md border border-border bg-bg px-3.5 text-caption font-bold text-text-secondary opacity-50"
+            >
+              Message Shop
+            </button>
+            <button
+              disabled
+              title="Following arrives in a later release"
+              className="flex h-[30px] cursor-not-allowed items-center rounded-md bg-primary px-3.5 text-caption font-bold text-white opacity-50"
+            >
+              Follow
+            </button>
+          </div>
+        </header>
+
+        {/* ---- Tabs + toolbar, one row ---- */}
+        <div className="flex flex-wrap items-end justify-between gap-3 rounded-b-lg border-t border-border bg-bg px-4 py-3 sm:px-6">
+          <nav className="flex flex-wrap items-end gap-1 overflow-x-auto">
+            {TABS.map((t) => (
+              <Link
+                key={t}
+                href={`/shops/${shopId}?tab=${t}`}
+                aria-current={tab === t ? "page" : undefined}
+                className={`flex h-11 shrink-0 items-center border-b-2 px-4 text-body font-medium transition-colors duration-(--duration-fast) ${
+                  tab === t
+                    ? "border-primary text-primary"
+                    : "border-transparent text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {TAB_LABEL[t]}
+                {t === "reviews" && (
+                  <span className="ml-1.5 text-caption text-text-secondary tabular">
+                    ({shop.review_count})
+                  </span>
+                )}
+              </Link>
+            ))}
+          </nav>
+
+          {tab === "shop" && (
+            <form action={`/shops/${shopId}`} className="flex flex-wrap items-center gap-2 pb-1">
+              <label htmlFor="shopSearch" className="sr-only">Search in shop</label>
+              <input
+                id="shopSearch" name="q" type="search" defaultValue={q}
+                placeholder="Search in shop…"
+                className="h-9 w-[176px] min-w-0 rounded-md border border-border px-3 text-caption outline-none focus:border-primary"
+              />
+              <button className="h-9 rounded-md border border-border px-3 text-caption font-medium text-text-secondary hover:bg-bg-muted">
+                Search
+              </button>
+
+              <div className="flex overflow-hidden rounded-md border border-border">
+                {([["newest", "Newest"], ["price_asc", "Price ↑"], ["price_desc", "Price ↓"]] as const).map(([v, label]) => (
+                  <Link
+                    key={v}
+                    href={url({ sort: v === "newest" ? undefined : v })}
+                    className={`flex h-9 items-center px-2.5 text-caption ${
+                      sort === v ? "bg-primary-subtle font-medium text-primary-on-subtle" : "text-text-secondary hover:bg-bg-muted"
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
+              <ViewToggle view={view} url={(v) => url({ view: v === "grid" ? undefined : v })} />
+            </form>
+          )}
+        </div>
+      </div>
 
       {tab !== "shop" ? (
         <section className="mt-6 rounded-lg border border-border bg-bg p-(--card-pad)">
@@ -312,40 +387,10 @@ export default async function ShopPage({
           </div>
 
           <div className="min-w-0 flex-1">
-            {/* Search-in-shop — always reachable regardless of shelf/grid
-                mode; submitting switches to the flat result list, same as
-                selecting a facet does. */}
-            <form action={`/shops/${shopId}`} className="flex flex-wrap items-center gap-2">
-              {tab !== "shop" && <input type="hidden" name="tab" value={tab} />}
-              <label htmlFor="shopSearch" className="sr-only">Search in shop</label>
-              <input
-                id="shopSearch" name="q" type="search" defaultValue={q}
-                placeholder="Search in shop…"
-                className="h-11 min-w-0 flex-1 rounded-md border border-border px-3 text-body outline-none focus:border-primary sm:max-w-[280px]"
-              />
-              <button className="h-11 rounded-md border border-border px-4 text-body font-medium text-text-secondary hover:bg-bg-muted">
-                Search
-              </button>
-
-              {!showShelves && (
-                <div className="ml-auto flex flex-wrap items-center gap-2">
-                  <div className="flex gap-1">
-                    {([["newest", "Newest"], ["price_asc", "Price ↑"], ["price_desc", "Price ↓"]] as const).map(([v, label]) => (
-                      <Link key={v} href={url({ sort: v === "newest" ? undefined : v })}
-                        className={`flex h-11 items-center rounded-md px-3 text-body ${
-                          sort === v ? "bg-primary-subtle font-medium text-primary-on-subtle" : "text-text-secondary hover:bg-bg-muted"
-                        }`}>
-                        {label}
-                      </Link>
-                    ))}
-                  </div>
-                  <ViewToggle view={view} url={(v) => url({ view: v === "grid" ? undefined : v })} />
-                </div>
-              )}
-            </form>
-
+            {/* Search/sort/view-toggle now live in the tabs+toolbar row above
+                (always reachable there, not gated behind shelf/grid mode). */}
             {showShelves ? (
-              <div className="mt-6 flex flex-col gap-8">
+              <div className="flex flex-col gap-8">
                 <Shelf title="Featured Cards" listings={featured} shopId={shopId} delay="enter-d3" />
                 {shelfGraded.length > 0 && (
                   <Shelf title="Graded Cards" listings={shelfGraded} shopId={shopId} cat="graded" delay="enter-d4" />
@@ -366,56 +411,6 @@ export default async function ShopPage({
         </div>
       )}
     </AppShell>
-  );
-}
-
-function FacetList({
-  title, items, param, selected, url,
-}: {
-  title: string;
-  items: [string, number][];
-  param: "set" | "rarity";
-  selected: string[];
-  url: (patch: Partial<ShopSearch>) => string;
-}) {
-  if (items.length === 0) return null;
-  const toggle = (value: string) => {
-    const next = selected.includes(value)
-      ? selected.filter((v) => v !== value)
-      : [...selected, value];
-    return url({ [param]: next.length ? next.join(",") : undefined } as Partial<ShopSearch>);
-  };
-  return (
-    <div className="mt-3">
-      <h3 className="text-caption font-medium text-text-secondary">{title}</h3>
-      <ul className="mt-1 flex flex-col">
-        {items.slice(0, 5).map(([value, count]) => {
-          const on = selected.includes(value);
-          return (
-            <li key={value}>
-              <Link
-                href={toggle(value)}
-                aria-pressed={on}
-                className={`flex h-11 items-center gap-2 rounded-md px-2 text-body ${
-                  on ? "bg-primary-subtle font-medium text-primary-on-subtle" : "hover:bg-bg-muted"
-                }`}
-              >
-                <span
-                  aria-hidden
-                  className={`grid size-4 shrink-0 place-items-center rounded border ${
-                    on ? "border-primary bg-primary text-white" : "border-border"
-                  }`}
-                >
-                  {on && "✓"}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-left">{value}</span>
-                <span className="shrink-0 text-caption text-text-secondary tabular">{count}</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
   );
 }
 
@@ -442,7 +437,7 @@ function Shelf({
         <ShelfScroller>
           {listings.map((l) => (
             <ShelfCardTilt key={l.id}>
-              <ListingCardTile listing={l} />
+              <ShopShelfCard listing={l} />
             </ShelfCardTilt>
           ))}
         </ShelfScroller>

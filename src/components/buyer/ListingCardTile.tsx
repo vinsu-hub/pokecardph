@@ -31,8 +31,11 @@ export function ListingCardTile({ listing }: { listing: ListingCard }) {
       className="group flex flex-col overflow-hidden rounded-lg border border-border bg-bg shadow-rest transition-[transform,box-shadow] duration-(--duration-fast) ease-(--ease-out-soft) hover:-translate-y-0.5 hover:shadow-elevated"
     >
       {/* 5:7 is the real card aspect (2.5" x 3.5"), so photographed art fills
-          the frame exactly instead of letterboxing inside a 3:4 box. */}
-      <div className="relative aspect-[5/7] overflow-hidden bg-bg-muted">
+          the frame exactly instead of letterboxing inside a 3:4 box.
+          `card-art` is inert here — only globals.css's `.shelf-item
+          .card-art` rule gives it behavior (a hover light-sweep), so this
+          has zero effect outside the shop storefront's shelves. */}
+      <div className="relative aspect-[5/7] overflow-hidden bg-bg-muted card-art">
         <span className="absolute top-2 left-2 z-10 rounded-md bg-grade-bg px-2 py-0.5 text-caption font-medium text-grade-text">
           {conditionLabel(listing)}
         </span>
