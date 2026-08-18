@@ -27,7 +27,6 @@ export function LoadingIndicator({
   pendingLabel = "Loading…",
   successLabel = "Done!",
   errorMessage = "Something went wrong — please try again.",
-  anchored = false,
 }: {
   state: "idle" | "pending" | "success" | "error";
   /** 0-100, real data only — never invented. Omit to skip the progress bar
@@ -37,17 +36,6 @@ export function LoadingIndicator({
   pendingLabel?: string;
   successLabel?: string;
   errorMessage?: string;
-  /** Gives the overlay a stable `view-transition-name` so it survives
-   *  Next's route-navigation transitions as one persistent element instead
-   *  of being torn down and rebuilt at each step of the transition chain
-   *  Next fires per navigation (confirmed by instrumenting
-   *  `document.startViewTransition` directly) — that rebuild is what read
-   *  as a white flicker between steps. Only `src/app/loading.tsx` (the one
-   *  instance actually living inside a route transition) should set this —
-   *  the name must stay unique document-wide, and the browser aborts a
-   *  transition outright on a collision, so the three Server-Action
-   *  overlays (checkout, trade, beta signup) leave it unset. */
-  anchored?: boolean;
 }) {
   const mounted = useIsClient();
   if (!mounted || state === "idle") return null;
@@ -57,7 +45,6 @@ export function LoadingIndicator({
       className="fixed inset-0 z-50 grid place-items-center px-4"
       role="status"
       aria-live="polite"
-      style={anchored ? { viewTransitionName: "loading-overlay" } : undefined}
     >
       <div className="relative flex w-full max-w-[400px] flex-col items-center gap-4 px-4">
         {state === "error" ? (

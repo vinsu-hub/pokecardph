@@ -10,5 +10,5 @@ import { LoadingIndicator } from "@/components/shared/LoadingIndicator";
  * `useFormStatus()` themselves.
  */
 export default function Loading() {
-  return <LoadingIndicator state="pending" pendingLabel="Loading…" anchored />;
+  return <LoadingIndicator state="pending" pendingLabel="Loading…" />;
 }
