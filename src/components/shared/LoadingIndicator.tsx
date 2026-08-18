@@ -7,8 +7,9 @@ import { ChromaKeyVideo } from "@/components/shared/ChromaKeyVideo";
 /**
  * On-brand replacement for a generic spinner during a real async action —
  * a Pikachu pixel-art loop (rendered via Remotion, see D:\CODING\remotion)
- * instead of plain "Sending…" text, floating over a blurred backdrop with no
- * card/box chrome of its own. Three states:
+ * instead of plain "Sending…" text, floating directly over the page with no
+ * backdrop, card, or box chrome of its own — the caller's content stays
+ * fully visible and undimmed behind it. Three states:
  *
  * - "pending": the looping chase/cart-fill clip, plus a real progress bar
  *   only when the caller has real percentage data (uploads/multi-step
@@ -58,7 +59,6 @@ export function LoadingIndicator({
       aria-live="polite"
       style={anchored ? { viewTransitionName: "loading-overlay" } : undefined}
     >
-      <div aria-hidden className="absolute inset-0 backdrop-blur-md bg-text-primary/10" />
       <div className="relative flex w-full max-w-[400px] flex-col items-center gap-4 px-4">
         {state === "error" ? (
           <p className="rounded-md bg-danger-bg px-3 py-2 text-center text-body text-danger">
